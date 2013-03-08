@@ -22,6 +22,8 @@ using std::map;
 using std::string;
 
 class Tokenizer {
+	Token currentToken;
+
 	TokenTable symbolTable;
 
 	map<string, TokenName> keywords;
@@ -34,6 +36,7 @@ class Tokenizer {
 	char lookahead;
 	unsigned line;
 	unsigned pos;
+	bool eof;
 
 	void match(char ch);
 	void error(const char* message);
@@ -49,6 +52,7 @@ public:
 	Token getToken();
 
 	bool hasNext();
+	void goNext();
 
 	string tokenToString(const Token& token);
 

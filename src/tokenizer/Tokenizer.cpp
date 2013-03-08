@@ -5,12 +5,11 @@
  *      Author: user
  */
 
-#include "Tokenizer.h"
 #include <cstdlib>
 #include <string>
 #include <sstream>
 
-#include "Token.h"
+#include "Tokenizer.h"
 #include "../util/util.h"
 
 namespace Tokenizer {
@@ -20,12 +19,13 @@ using std::ostringstream;
 using std::istringstream;
 using Util::to_string;
 
-Tokenizer::Tokenizer(istream& is) : is(is), line(1), pos(0) {
+Tokenizer::Tokenizer(istream& is) : is(is), line(1), pos(0), eof(false) {
 	current = is.get();
 	lookahead = is.get();
 	is.unget();
 
 	initTables();
+	goNext();
 }
 
 void Tokenizer::match(char ch) {
@@ -96,95 +96,8 @@ char Tokenizer::processEscapeSequence() {
 }
 
 Token Tokenizer::getToken() {
-	Token result;
 
-	string word;
-	string maybe2op = string() + current + lookahead;
-	string maybe1op = string() + current;
-
-	if (nondigit(current)) {
-		while (nondigit(current) || isdigit(current)) {
-			word += current;
-			match(current);
-		}
-
-		if (keywords.find(word) != keywords.end()) {
-			result.setName(keywords[word]);
-		} else {
-			result.setName(IDENTIFIER);
-			result.setId(symbolTable.insert(word));
-		}
-	} else if (isdigit(current)) {
-		while (isdigit(current)) {
-			word += current;
-			match(current);
-		}
-
-		if (current == '.') {
-			word += current;
-			match(current);
-
-			while (isdigit(current)) {
-				word += current;
-				match(current);
-			}
-
-
-			result.setName(CONST_FLOAT);
-			result.setId(symbolTable.insert(word));
-		} else {
-			result.setName(CONST_INT);
-			result.setId(symbolTable.insert(word));
-		}
-	} else if (current == '\'') {
-		match(current);
-
-		if (current == '\\') {
-			word += processEscapeSequence();
-		} else {
-			word += current;
-			match(current);
-		}
-
-		match('\'');
-
-		result.setName(CONST_CHAR);
-		result.setId(symbolTable.insert(word));
-	} else if (current == '\"') {
-		match('\"');
-
-		while (current != '\"') {
-			if (current == '\n') {
-				error("unexpected newline character");
-			}
-
-			if (current == '\\') {
-				word += processEscapeSequence();
-			} else {
-				word += current;
-				match(current);
-			}
-		}
-
-		match(current);
-
-		result.setName(CONST_STRING);
-		result.setId(symbolTable.insert(word));
-	} else if (twoCharPunctuators.find(maybe2op) != twoCharPunctuators.end()) {
-		match(current);
-		match(current);
-		result.setName(twoCharPunctuators[maybe2op]);
-	} else if (oneCharPunctuators.find(maybe1op) != oneCharPunctuators.end()) {
-		match(current);
-		result.setName(oneCharPunctuators[maybe1op]);
-	}
-
-	if (result.getName() == UNDETERMINED) {
-		error("tokenizer failed");
-	}
-
-	skipCommentsAndWs();
-	return result;
+	return currentToken;
 }
 
 bool Tokenizer::hasNext() {
@@ -282,6 +195,104 @@ string Tokenizer::tokenToString(const Token& token) {
 	default:
 		return string("tokenToString failed");
 	}
+}
+
+void Tokenizer::goNext() {
+	if (current == -1) {
+		eof = true;
+		return;
+	}
+
+	Token result;
+
+	string word;
+	string maybe2op = string() + current + lookahead;
+	string maybe1op = string() + current;
+
+	if (nondigit(current)) {
+		while (nondigit(current) || isdigit(current)) {
+			word += current;
+			match(current);
+		}
+
+		if (keywords.find(word) != keywords.end()) {
+			result.setName(keywords[word]);
+		} else {
+			result.setName(IDENTIFIER);
+			result.setId(symbolTable.insert(word));
+		}
+	} else if (isdigit(current)) {
+		while (isdigit(current)) {
+			word += current;
+			match(current);
+		}
+
+		if (current == '.') {
+			word += current;
+			match(current);
+
+			while (isdigit(current)) {
+				word += current;
+				match(current);
+			}
+
+			result.setName(CONST_FLOAT);
+			result.setId(symbolTable.insert(word));
+		} else {
+			result.setName(CONST_INT);
+			result.setId(symbolTable.insert(word));
+		}
+	} else if (current == '\'') {
+		match(current);
+
+		if (current == '\\') {
+			word += processEscapeSequence();
+		} else {
+			word += current;
+			match(current);
+		}
+
+		match('\'');
+
+		result.setName(CONST_CHAR);
+		result.setId(symbolTable.insert(word));
+	} else if (current == '\"') {
+		match('\"');
+
+		while (current != '\"') {
+			if (current == '\n') {
+				error("unexpected newline character");
+			}
+
+			if (current == '\\') {
+				word += processEscapeSequence();
+			} else {
+				word += current;
+				match(current);
+			}
+		}
+
+		match(current);
+
+		result.setName(CONST_STRING);
+		result.setId(symbolTable.insert(word));
+	} else if (twoCharPunctuators.find(maybe2op) != twoCharPunctuators.end()) {
+		match(current);
+		match(current);
+		result.setName(twoCharPunctuators[maybe2op]);
+	} else if (oneCharPunctuators.find(maybe1op) != oneCharPunctuators.end()) {
+		match(current);
+		result.setName(oneCharPunctuators[maybe1op]);
+	}
+
+	if (result.getName() == UNDETERMINED && current == -1) {
+		result.setName(_EOF);
+	} else if (result.getName() == UNDETERMINED) {
+		error("tokenizer failed");
+	}
+
+	skipCommentsAndWs();
+	currentToken = result;
 }
 
 Tokenizer::~Tokenizer() {

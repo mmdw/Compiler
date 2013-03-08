@@ -4,9 +4,9 @@
  *  Created on: 07.03.2013
  *      Author: user
  */
+#include <cstddef>
 
 #include "Token.h"
-#include <cstddef>
 
 namespace Tokenizer {
 Token::Token() : name(UNDETERMINED), id(NULL) {

@@ -9,19 +9,24 @@
 #include <fstream>
 #include <string>
 
-#include "tokenizer/Tokenizer.h"
+#include "syntax/SyntaxExp.h"
 
 using namespace std;
 void testLexer() {
-	ifstream ifs("C:/Users/user/git/Compiler/Compiler/res/test.txt");
+	ifstream ifs("C:/Users/user/git/Compiler/res/test.txt");
+
+	Syntax::TreeNode* p_root;
 
 	Tokenizer::Tokenizer tk(ifs);
+	Syntax::SyntaxExp syntaxAnalyzer(tk, &p_root);
 
-	while (tk.hasNext()) {
-		Tokenizer::Token token = tk.getToken();
+	syntaxAnalyzer.printTree(std::cout, p_root);
 
-		cout << tk.tokenToString(token) << endl;
-	}
+//	while (tk.hasNext()) {
+//		cout << tk.tokenToString(tk.getToken()) << " ";
+//		tk.goNext();
+//	}
+
 }
 int main() {
 	testLexer();
