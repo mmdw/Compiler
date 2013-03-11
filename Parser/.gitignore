@@ -1,0 +1,6 @@
+/lex.yy.cc
+/location.hh
+/parser.tab.c
+/parser.tab.h
+/position.hh
+/stack.hh
