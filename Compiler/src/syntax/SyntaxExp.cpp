@@ -19,7 +19,7 @@ SyntaxExp::SyntaxExp(Tokenizer& tokenizer, TreeNode** pp_node) : tokenizer(token
 		EXP("EXP"), TERM("TERM") {
 
 	*pp_node = exp(tokenizer);
-//	cleanUp(*pp_node);
+	cleanUp(*pp_node);
 }
 
 
@@ -43,7 +43,6 @@ TreeNode* SyntaxExp::exp(Tokenizer& tokenizer) {
 /*
  * EXP1	= +EXP | -EXP | e
  *
- * EXP1 = EXP + T | EXP - T | e
  */
 TreeNode* SyntaxExp::exp1(Tokenizer& t) {
 	TreeNode* result = new TreeNode("EXP1");
