@@ -15,29 +15,16 @@
 #include "TreeBuilder.h"
 
 using namespace std;
-//void testLexer() {
-//	ifstream ifs("C:/Users/user/git/Compiler/res/test.txt");
-//
-//	Syntax::TreeNode* p_root;
-//
-//	Tokenizer::Tokenizer tk(ifs);
-//	Syntax::SyntaxExp syntaxAnalyzer(tk, &p_root);
-//
-//	syntaxAnalyzer.printTree(std::cout, p_root);
-//
-////	while (tk.hasNext()) {
-////		cout << tk.tokenToString(tk.getToken()) << " ";
-////		tk.goNext();
-////	}
-//
-//}
 
 void testParser() {
 	Compiler::TreeBuilder iniFile;
-	std::istringstream iss("1*(2+3)");
+	std::istringstream iss("int eeee() {a = b + c;}");
 
-	Compiler::ASTBuilder::TreeNode::printTree(std::cout, iniFile.parseStream(iss), 0);
-
+	try {
+		Compiler::ASTBuilder::TreeNode::printTree(std::cout, iniFile.parseStream(iss), 0);
+	} catch (std::string& e) {
+		cout << "exception: " << e << std::endl;
+	}
 }
 int main() {
 	testParser();
