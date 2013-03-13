@@ -20,6 +20,7 @@ namespace Compiler {
 
 			TreeNode(const char* value);
 			TreeNode* append(TreeNode* p_node);
+			TreeNode* at(unsigned n);
 			static void printTree(std::ostream& os, TreeNode* root, int tabs);
 		};
 	}

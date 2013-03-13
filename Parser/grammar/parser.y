@@ -45,6 +45,7 @@
 %type <val> statement
 %type <val> definition_seq
 %type <val> definition
+%type <val> variable_definition
 %type <val> func_decl
 %type <val> block
 %type <val> typename
@@ -60,8 +61,8 @@
 %type <val> exp_logic_3
 %type <val> exp_logic_4
 
-%token <tptr> ADD SUB MUL DIV EOL OP CP OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV
-%token <val> INT_NUMBER KEYWORD_CHAR FLOAT_NUMBER IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_RETURN
+%token <tptr> ADD SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV
+%token <val> INT_NUMBER KEYWORD_CHAR FLOAT_NUMBER IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_RETURN KEYWORD_FLOAT KEYWORD_STRUCT
 
 %%
 
@@ -72,17 +73,21 @@ definition_seq : 								{ $$ = new TreeNode("DEFINITION_SEQUENCE"); }
  | definition_seq definition 					{ $$ = $1->append($2); }
  ;
 
-definition : typename IDENTIFIER SEMICOLON	    { $$ = (new TreeNode("DEFINE_CHAR"))->append($2); }
- | func_decl									{ /*$$ = new TreeNode("FUNC_DECL"); */ }
+definition : variable_definition	    
+ | func_decl									{ }
+ ;
+ 
+variable_definition : typename IDENTIFIER SEMICOLON	{ $$ = (new TreeNode("DEFINE_VARIABLE"))->append($1)->append($2); }
  ;
 
 typename : KEYWORD_CHAR 										
- | KEYWORD_INT									
+ | KEYWORD_INT
+ | KEYWORD_FLOAT									
  | IDENTIFIER
  | KEYWORD_VOID									
  ;
  
-func_decl : typename IDENTIFIER OP func_arg_definition CP block { $$ = (new TreeNode("FUNC_DECL"))->append($1)->append($2)->append($4)->append($6); }
+func_decl : typename IDENTIFIER OP func_arg_definition CP block { $$ = (new TreeNode("DEFINE_FUNCTION"))->append($1)->append($2)->append($4)->append($6); }
  ;
 
 func_arg_definition : 							{ $$ = new TreeNode("FUNC_ARGS"); }
@@ -93,18 +98,20 @@ arg_definition_seq : arg_definition				{ $$ = (new TreeNode("FUNC_ARGS"))->appen
  | arg_definition_seq COMMA  arg_definition		{ $$ = $1->append($3); }
  
 
-arg_definition : typename IDENTIFIER			{ $$ = (new TreeNode("VAR_DEF"))->append($1)->append($2); }
+arg_definition : typename IDENTIFIER			{ $$ = (new TreeNode("ARG_DEF"))->append($1)->append($2); }
 
 block : OB statement_seq CB						{ $$ = (new TreeNode("BLOCK"))->append($2); }
  ;
  
-statement_seq : 								{ $$ = new TreeNode("INST_SEQUENCE"); }
+statement_seq : 								{ $$ = new TreeNode("STATEMENT_SEQUENCE"); }
  | statement_seq statement						{ $$ = $1->append($2); }
  ;
  
 statement : exp SEMICOLON
- | IDENTIFIER ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode("ASSIGN"))->append($1)->append($3); }									
- | IDENTIFIER ASSIGN_PLUS 	exp		SEMICOLON
+ | variable_definition
+ | block
+ | IDENTIFIER ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode("ASSIGN"))->append($1)->append($3); } 									
+ | IDENTIFIER ASSIGN_PLUS 	exp		SEMICOLON	
  | IDENTIFIER ASSIGN_MINUS	exp  	SEMICOLON
  | IDENTIFIER ASSIGN_MUL	exp		SEMICOLON
  | IDENTIFIER ASSIGN_DIV 	exp  	SEMICOLON
@@ -127,9 +134,9 @@ exp_logic_2 : exp_logic_3
  ;
 
 exp_logic_3 : exp_logic_4
- | exp_logic_4 LESS exp_logic_4					{ $$ = (new TreeNode("<"))->append($1)->append($3); }
+ | exp_logic_4 LESS exp_logic_4					{ $$ = (new TreeNode("<"))->append($1)->append($3);  }
  | exp_logic_4 LESS_EQUAL exp_logic_4			{ $$ = (new TreeNode("<="))->append($1)->append($3); }
- | exp_logic_4 GREATER exp_logic_4				{ $$ = (new TreeNode(">"))->append($1)->append($3); }
+ | exp_logic_4 GREATER exp_logic_4				{ $$ = (new TreeNode(">"))->append($1)->append($3);  }
  | exp_logic_4 GREATER_EQUAL exp_logic_4		{ $$ = (new TreeNode(">="))->append($1)->append($3); }
  
 exp_logic_4 : exp_arithm
@@ -145,15 +152,15 @@ factor: term
  | factor DIV term								{ $$ = (new TreeNode("/"))->append($1)->append($3); }
  ;
 
-term: INT_NUMBER
- | FLOAT_NUMBER
- | IDENTIFIER
+term: INT_NUMBER								{ $$ = (new TreeNode("CONST_INT"))->append($1); }
+ | FLOAT_NUMBER									{ $$ = (new TreeNode("CONST_FLOAT"))->append($1); }
+ | IDENTIFIER									{ $$ = (new TreeNode("IDENTIFIER"))->append($1); }
  | OP exp CP 									{ $$ = $2; } 
  | IDENTIFIER OP func_arg CP					{ $$ = (new TreeNode("CALL"))->append($1)->append($3); }
  ;
 
-func_arg: 										{ $$ = new TreeNode("ARGLIST"); }
- | arg											{ $$ = (new TreeNode("ARGLIST"))->append($1); }
+func_arg: 										{ $$ = new TreeNode("FUNC_ARGS"); }
+ | arg											{ }
  ;
  
 arg : exp										{ $$ = (new TreeNode("FUNC_ARGS"))->append($1); }

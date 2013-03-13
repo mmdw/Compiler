@@ -21,6 +21,8 @@ INT				[[:digit:]]+
 char			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_CHAR; }
 void 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_VOID; }
 int 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }
+struct 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_STRUCT; }
+float			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_FLOAT; }
 return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 
 
@@ -52,5 +54,7 @@ return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 {INT}		 	{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::INT_NUMBER; }
 {FLOAT}			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::FLOAT_NUMBER; }
 
-.            	{ yylloc->step(); }
-\n      	 	{ return Compiler::ASTBuilder::Parser::token::EOL; }
+" "            	{ yylloc->step(); }
+\t				{ yylloc->step(); }
+\n      	 	{ yylloc->step(); }
+.				{ throw std::string("unknown token"); }

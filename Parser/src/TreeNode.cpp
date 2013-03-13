@@ -45,6 +45,16 @@ namespace Compiler {
 				os << " ";
 			}
 		}
+
+		 TreeNode* Compiler::ASTBuilder::TreeNode::at(unsigned n) {
+		 		std::list<TreeNode*>::iterator it = childs.begin();
+
+		 		for (int i = 0; i < n; ++i) {
+		 			++it;
+		 		}
+
+		 		return *it;
+		 }
 	}
 }
 
