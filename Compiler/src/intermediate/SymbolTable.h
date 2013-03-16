@@ -19,10 +19,11 @@ struct SymbolTableRow;
 typedef unsigned long SymbolId;
 typedef std::map<std::string, SymbolTableRow> SymbolTable;
 
+
 struct SymbolTableRow {
-	SymbolId id;
+	SymbolId 	id;
 	std::string	identifier;
-	SymbolType type;
+	SymbolType 	type;
 
 	SymbolTableRow(const SymbolTableRow& rhs) : id(rhs.id), identifier(rhs.identifier), type(rhs.type) {
 

@@ -23,6 +23,8 @@ void 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parse
 int 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }
 struct 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_STRUCT; }
 float			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_FLOAT; }
+println			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }	
+	
 return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 
 

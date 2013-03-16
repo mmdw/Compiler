@@ -60,8 +60,9 @@
 %type <val> exp_logic_2
 %type <val> exp_logic_3
 %type <val> exp_logic_4
+%type <val> identifier
 
-%token <tptr> ADD SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV
+%token <tptr> ADD SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
 %token <val> INT_NUMBER KEYWORD_CHAR FLOAT_NUMBER IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_RETURN KEYWORD_FLOAT KEYWORD_STRUCT
 
 %%
@@ -110,13 +111,18 @@ statement_seq : 								{ $$ = new TreeNode("STATEMENT_SEQUENCE"); }
 statement : exp SEMICOLON
  | variable_definition
  | block
- | IDENTIFIER ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode("ASSIGN"))->append($1)->append($3); } 									
- | IDENTIFIER ASSIGN_PLUS 	exp		SEMICOLON	
- | IDENTIFIER ASSIGN_MINUS	exp  	SEMICOLON
- | IDENTIFIER ASSIGN_MUL	exp		SEMICOLON
- | IDENTIFIER ASSIGN_DIV 	exp  	SEMICOLON
+ | identifier ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode("ASSIGN"))->append($1)->append($3); } 									
+ | identifier ASSIGN_PLUS 	exp		SEMICOLON	
+ | identifier ASSIGN_MINUS	exp  	SEMICOLON
+ | identifier ASSIGN_MUL	exp		SEMICOLON
+ | identifier ASSIGN_DIV 	exp  	SEMICOLON
+ | KEYWORD_RETURN exp SEMICOLON					{ $$ = (new TreeNode("RETURN"))->append($2); 			}
+ | KEYWORD_PRINTLN OP exp CP		SEMICOLON	{ $$ = (new TreeNode("PRINTLN"))->append($3);			}
  ;
 
+identifier : IDENTIFIER							{ $$ = (new TreeNode("IDENTIFIER"))->append($1); }
+ ;
+ 
 exp : exp_logic_0
  ;
 
@@ -154,7 +160,7 @@ factor: term
 
 term: INT_NUMBER								{ $$ = (new TreeNode("CONST_INT"))->append($1); }
  | FLOAT_NUMBER									{ $$ = (new TreeNode("CONST_FLOAT"))->append($1); }
- | IDENTIFIER									{ $$ = (new TreeNode("IDENTIFIER"))->append($1); }
+ | identifier									{ }
  | OP exp CP 									{ $$ = $2; } 
  | IDENTIFIER OP func_arg CP					{ $$ = (new TreeNode("CALL"))->append($1)->append($3); }
  ;

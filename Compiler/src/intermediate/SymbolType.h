@@ -12,6 +12,7 @@ namespace Compiler {
 	enum SymbolType {
 		SYMBOL_INT,
 		SYMBOL_FLOAT,
+		SYMBOL_VOID,
 		SYMBOL_FUNC
 	};
 }

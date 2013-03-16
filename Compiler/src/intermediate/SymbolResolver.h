@@ -26,9 +26,15 @@ public:
 	SymbolResolver();
 	virtual ~SymbolResolver();
 
+	bool existInCurrentScope(const std::string& identifier);
 	bool exists(const std::string& identifier);
-	void insert(const std::string& identifier, SymbolType type);
+
+	SymbolId insert(const std::string& identifier, SymbolType type);
+	SymbolId findInCurrentScope(const std::string& identifier);
 	SymbolId find(const std::string& identifier);
+	SymbolId insertTemp(SymbolType type);
+
+	std::list<SymbolId> getScopedVariables();
 
 	void push();
 	void pop();

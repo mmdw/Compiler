@@ -1,20 +1,7 @@
-int a;
-int b;
-int foo () {
-	int a;	
-	int b;
+void main () {
+	int z;
+	z = (7 + 2) + (9 + 11);
 	
-	{
-		int c;
-		int a;
-	}
-	y = 2.12 + 3;
-	z = 3 + 3 + 4; 
+	println(z);
 }
 
-int bar() {
-	int a;
-	int b;
-	
-	y = 3 * 3;
-}
