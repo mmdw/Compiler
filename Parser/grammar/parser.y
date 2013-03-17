@@ -4,14 +4,16 @@
 %locations
 %define namespace "Compiler::ASTBuilder"
 %define parser_class_name "Parser"
-%parse-param { Compiler::ASTBuilder::Scanner &scanner }
-%parse-param { Compiler::ASTBuilder::TreeNode** pp_root }
-%lex-param   { Compiler::ASTBuilder::Scanner &scanner }
+%parse-param { Compiler::ASTBuilder::Scanner 			&scanner 	}
+%parse-param { Compiler::ASTBuilder::TreeNode** 		pp_root 	}
+%parse-param { Compiler::ASTBuilder::SymbolResolver* 	p_resolver 	}
+%lex-param   { Compiler::ASTBuilder::Scanner &scanner 				}
 
 %code requires {
 	#include <string>
 	#include <sstream>
 	#include <map>
+	#include "src/SymbolResolver.h"
 	#include "headers/TreeNode.h"
 	
 	namespace Compiler {
@@ -24,7 +26,8 @@
 %code {
 	namespace Compiler {
 		namespace ASTBuilder {
-			TreeNode* p_root;
+			TreeNode* 		p_root;
+			SymbolResolver* p_resolver;
 		}
 	}
 	
@@ -35,7 +38,8 @@
 }
 
 %union  {
-	TreeNode*	val;
+	TreeNode*		val;
+	std::string*	str;
 }
 %type <val> exp
 %type <val> factor
@@ -44,11 +48,14 @@
 %type <val> statement_seq
 %type <val> statement
 %type <val> definition_seq
-%type <val> definition
-%type <val> variable_definition
+
+%type <val> local_variable_definition
+%type <val> global_variable_definition
+
+%type <val> marker_block_start marker_block_end
+
 %type <val> func_decl
 %type <val> block
-%type <val> typename
 %type <val> func_arg_definition
 %type <val> arg_definition
 %type <val> arg_definition_seq
@@ -63,22 +70,27 @@
 %type <val> identifier
 
 %token <tptr> ADD SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
-%token <val> INT_NUMBER KEYWORD_CHAR FLOAT_NUMBER IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_RETURN KEYWORD_FLOAT KEYWORD_STRUCT
+%token <val>  KEYWORD_RETURN  
+
+%type  <str> typename
+%token <str> INT_NUMBER  FLOAT_NUMBER  KEYWORD_CHAR IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_FLOAT KEYWORD_STRUCT
 
 %%
 
 program : definition_seq						{ *pp_root = $1; }
  ;
 
-definition_seq : 								{ $$ = new TreeNode("DEFINITION_SEQUENCE"); }
- | definition_seq definition 					{ $$ = $1->append($2); }
+definition_seq : 								{ $$ = new TreeNode(NODE_DEFINITION_SEQUENCE); }
+ | definition_seq global_variable_definition	{  }
+ | definition_seq func_decl						{ $$ = $1->append($2); }
  ;
 
-definition : variable_definition	    
- | func_decl									{ }
+global_variable_definition : typename IDENTIFIER SEMICOLON	
+	{ p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_GLOBAL);  }
  ;
  
-variable_definition : typename IDENTIFIER SEMICOLON	{ $$ = (new TreeNode("DEFINE_VARIABLE"))->append($1)->append($2); }
+local_variable_definition : typename IDENTIFIER SEMICOLON	
+	{ p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_LOCAL);  }
  ;
 
 typename : KEYWORD_CHAR 										
@@ -88,88 +100,111 @@ typename : KEYWORD_CHAR
  | KEYWORD_VOID									
  ;
  
-func_decl : typename IDENTIFIER OP func_arg_definition CP block { $$ = (new TreeNode("DEFINE_FUNCTION"))->append($1)->append($2)->append($4)->append($6); }
+func_decl : typename IDENTIFIER OP func_arg_definition CP block 
+	{ TreeNode* p_node = (new TreeNode(NODE_FUNCTION_DEFINITION))->append($4)->append($6);
+	  p_node->symbolId = p_resolver->insertFunction(*$1, *$2);   
+	  $$ =  p_node; }
  ;
 
-func_arg_definition : 							{ $$ = new TreeNode("FUNC_ARGS"); }
+func_arg_definition : 							{ $$ = new TreeNode(NODE_FUNCTION_ARGUMENTS); }
  | arg_definition_seq							{  }
  ;
 
-arg_definition_seq : arg_definition				{ $$ = (new TreeNode("FUNC_ARGS"))->append($1); }
+arg_definition_seq : arg_definition				{ $$ = (new TreeNode(NODE_FUNCTION_ARGUMENTS))->append($1); }
  | arg_definition_seq COMMA  arg_definition		{ $$ = $1->append($3); }
  
 
-arg_definition : typename IDENTIFIER			{ $$ = (new TreeNode("ARG_DEF"))->append($1)->append($2); }
-
-block : OB statement_seq CB						{ $$ = (new TreeNode("BLOCK"))->append($2); }
+arg_definition : typename IDENTIFIER			
+	{ TreeNode* p_node = new TreeNode(NODE_SYMBOL);
+	  p_node->symbolId = p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_ARGUMENT);
+	  $$ =  p_node; }
  ;
  
-statement_seq : 								{ $$ = new TreeNode("STATEMENT_SEQUENCE"); }
+block : OB marker_block_start statement_seq marker_block_end CB
+			{ $$ = (new TreeNode(NODE_STATEMENT_BLOCK))->append($3); }
+ ;
+ 
+marker_block_start:								{ p_resolver->push(); }
+ ;
+ 
+marker_block_end:								{ p_resolver->pop(); }
+ 
+ 
+statement_seq : 								{ $$ = new TreeNode(NODE_STATEMENT_SEQUENCE); }
  | statement_seq statement						{ $$ = $1->append($2); }
+ | statement_seq local_variable_definition
  ;
  
 statement : exp SEMICOLON
- | variable_definition
  | block
- | identifier ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode("ASSIGN"))->append($1)->append($3); } 									
+ | identifier ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode(NODE_ASSIGN))->append($1)->append($3); } 									
  | identifier ASSIGN_PLUS 	exp		SEMICOLON	
  | identifier ASSIGN_MINUS	exp  	SEMICOLON
  | identifier ASSIGN_MUL	exp		SEMICOLON
  | identifier ASSIGN_DIV 	exp  	SEMICOLON
- | KEYWORD_RETURN exp SEMICOLON					{ $$ = (new TreeNode("RETURN"))->append($2); 			}
- | KEYWORD_PRINTLN OP exp CP		SEMICOLON	{ $$ = (new TreeNode("PRINTLN"))->append($3);			}
+ | KEYWORD_RETURN exp SEMICOLON					{ $$ = (new TreeNode(NODE_RETURN))->append($2); 			}
+ | KEYWORD_PRINTLN OP exp CP		SEMICOLON	{ $$ = (new TreeNode(NODE_PRINTLN))->append($3);			}
  ;
 
-identifier : IDENTIFIER							{ $$ = (new TreeNode("IDENTIFIER"))->append($1); }
+identifier : IDENTIFIER							
+	{  TreeNode* p_node = new TreeNode(NODE_SYMBOL);
+	   p_node->symbolId = p_resolver->resolve(*$1);
+	   $$ = p_node; }
  ;
  
 exp : exp_logic_0
  ;
 
 exp_logic_0 : exp_logic_1
- | exp_logic_0 OR exp_logic_1					{ $$ = (new TreeNode("||"))->append($1)->append($3); }
+ | exp_logic_0 OR exp_logic_1					{ $$ = (new TreeNode(NODE_OR))->append($1)->append($3); }
  ;
 
 exp_logic_1 : exp_logic_2						
- | exp_logic_1 AND exp_logic_2					{ $$ = (new TreeNode("&&"))->append($1)->append($3); }
+ | exp_logic_1 AND exp_logic_2					{ $$ = (new TreeNode(NODE_AND))->append($1)->append($3); }
  ;
 
 exp_logic_2 : exp_logic_3
- | exp_logic_2 EQUAL exp_logic_3				{ $$ = (new TreeNode("=="))->append($1)->append($3); }
- | exp_logic_2 NOT_EQUAL exp_logic_3			{ $$ = (new TreeNode("!="))->append($1)->append($3); }
+ | exp_logic_2 EQUAL exp_logic_3				{ $$ = (new TreeNode(NODE_EQUAL))->append($1)->append($3); }
+ | exp_logic_2 NOT_EQUAL exp_logic_3			{ $$ = (new TreeNode(NODE_NOT_EQUAL))->append($1)->append($3); }
  ;
 
 exp_logic_3 : exp_logic_4
- | exp_logic_4 LESS exp_logic_4					{ $$ = (new TreeNode("<"))->append($1)->append($3);  }
- | exp_logic_4 LESS_EQUAL exp_logic_4			{ $$ = (new TreeNode("<="))->append($1)->append($3); }
- | exp_logic_4 GREATER exp_logic_4				{ $$ = (new TreeNode(">"))->append($1)->append($3);  }
- | exp_logic_4 GREATER_EQUAL exp_logic_4		{ $$ = (new TreeNode(">="))->append($1)->append($3); }
+ | exp_logic_4 LESS exp_logic_4					{ $$ = (new TreeNode(NODE_LESS))->append($1)->append($3);  }
+ | exp_logic_4 LESS_EQUAL exp_logic_4			{ $$ = (new TreeNode(NODE_LESS_EQUAL))->append($1)->append($3); }
+ | exp_logic_4 GREATER exp_logic_4				{ $$ = (new TreeNode(NODE_GREATER))->append($1)->append($3);  }
+ | exp_logic_4 GREATER_EQUAL exp_logic_4		{ $$ = (new TreeNode(NODE_GREATER_EQUAL))->append($1)->append($3); }
  
 exp_logic_4 : exp_arithm
  ;
 
 exp_arithm: factor
- | exp_arithm ADD factor						{ $$ = (new TreeNode("+"))->append($1)->append($3); }
- | exp_arithm SUB factor						{ $$ = (new TreeNode("-"))->append($1)->append($3); }
+ | exp_arithm ADD factor						{ $$ = (new TreeNode(NODE_PLUS))->append($1)->append($3); }
+ | exp_arithm SUB factor						{ $$ = (new TreeNode(NODE_MINUS))->append($1)->append($3); }
  ;
 
 factor: term
- | factor MUL term								{ $$ = (new TreeNode("*"))->append($1)->append($3); }
- | factor DIV term								{ $$ = (new TreeNode("/"))->append($1)->append($3); }
+ | factor MUL term								{ $$ = (new TreeNode(NODE_MUL))->append($1)->append($3); }
+ | factor DIV term								{ $$ = (new TreeNode(NODE_DIV))->append($1)->append($3); }
  ;
 
-term: INT_NUMBER								{ $$ = (new TreeNode("CONST_INT"))->append($1); }
- | FLOAT_NUMBER									{ $$ = (new TreeNode("CONST_FLOAT"))->append($1); }
+term: INT_NUMBER								{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
+												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_INT);
+												  $$ = p_node; }
+												  
+ | FLOAT_NUMBER									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
+												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_FLOAT);
+												  $$ = p_node; } 
+ 
  | identifier									{ }
  | OP exp CP 									{ $$ = $2; } 
- | IDENTIFIER OP func_arg CP					{ $$ = (new TreeNode("CALL"))->append($1)->append($3); }
+ | identifier OP func_arg CP					{ $$ = (new TreeNode(NODE_CALL))->append($1)->append($3); }
  ;
 
-func_arg: 										{ $$ = new TreeNode("FUNC_ARGS"); }
+func_arg: 										{ $$ = new TreeNode(NODE_FUNCTION_ARGUMENTS); }
  | arg											{ }
  ;
  
-arg : exp										{ $$ = (new TreeNode("FUNC_ARGS"))->append($1); }
+arg : exp										{ $$ = (new TreeNode(NODE_FUNCTION_ARGUMENTS))->append($1); }
  | arg COMMA exp								{ $$ = $1->append($3); }
  ;
 	

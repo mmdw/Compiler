@@ -1,18 +1,24 @@
 CC     = g++
-CFLAGS = -Wall -IC:\Program\ Files\ (x86)\FlexBison
+CFLAGS = -Wall -g -IC:\Program\ Files\ (x86)\FlexBison
 BIN    = Parser.exe
 LIB	   = libParser.a
 
-$(LIB) : parser.o scanner.o TreeBuilder.o TreeNode.o
-	ar -r libParser.a parser.o scanner.o TreeBuilder.o TreeNode.o
+$(LIB) : parser.o scanner.o TreeBuilder.o TreeNode.o  StringHolder.o  SymbolTable.o 
+	ar -r libParser.a parser.o scanner.o TreeBuilder.o TreeNode.o StringHolder.o  SymbolTable.o 
 
-$(BIN) : parser.o scanner.o main.cpp
-	$(CC) $(CFLAGS) main.cpp src/TreeBuilder.cpp src/TreeNode.cpp scanner.o parser.o -o $(BIN)
+$(BIN) : parser.o scanner.o main.cpp TreeNode.o StringHolder.o TreeBuilder.o TreeNode.o 
+	$(CC) $(CFLAGS) main.cpp SymbolTable.o StringHolder.o TreeBuilder.o TreeNode.o scanner.o parser.o -o $(BIN)
 
-TreeBuilder.o :
+SymbolTable.o : src/SymbolTable.cpp
+	$(CC) $(CFLAGS) -c -o SymbolTable.o src/SymbolTable.cpp
+	
+StringHolder.o : src/StringHolder.cpp
+	$(CC) $(CFLAGS) -c -o StringHolder.o src/StringHolder.cpp
+	
+TreeBuilder.o :  src/TreeBuilder.cpp
 	$(CC) $(CFLAGS) -c -o TreeBuilder.o src/TreeBuilder.cpp
 	
-TreeNode.o : 
+TreeNode.o : src/TreeNode.cpp
 	$(CC) $(CFLAGS) -c -o TreeNode.o src/TreeNode.cpp
 	
 parser.o : grammar/parser.y

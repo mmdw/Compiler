@@ -6,15 +6,25 @@
  */
 #include "Scanner.h"
 #include "../headers/TreeBuilder.h"
+#include "StringHolder.h"
 
 namespace Compiler {
 
-	ASTBuilder::TreeNode* TreeBuilder::parseStream(std::istream &iniStream) {
-		ASTBuilder::Scanner scanner(&iniStream);
-		ASTBuilder::TreeNode* node;
-		ASTBuilder::Parser parser(scanner, &node);
-		parser.parse();
+	void TreeBuilder::parseStream(ASTBuilder::TreeNode** pp_node, ASTBuilder::SymbolTable** pp_table,
+			std::istream &iniStream) {
 
-		return node;
+		ASTBuilder::Scanner scanner(&iniStream);
+
+		*pp_table = new ASTBuilder::SymbolTable;
+
+		ASTBuilder::SymbolResolver resolver(*pp_table);
+
+		ASTBuilder::Parser parser(scanner, pp_node, &resolver);
+
+		resolver.push();
+		parser.parse();
+		resolver.pop();
+
+		ASTBuilder::StringHolder::clear();
 	}
 }

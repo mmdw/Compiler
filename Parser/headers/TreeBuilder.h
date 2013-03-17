@@ -4,11 +4,12 @@
 #include <istream>
 
 #include "TreeNode.h"
+#include "SymbolTable.h"
 
 namespace Compiler {
 	class TreeBuilder {
 		public:
-			ASTBuilder::TreeNode* parseStream(std::istream &iniStream);
+			void parseStream(ASTBuilder::TreeNode** pp_node, ASTBuilder::SymbolTable** pp_table,
+					std::istream &iniStream);
 	};
-
 }

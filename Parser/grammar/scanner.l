@@ -1,6 +1,7 @@
 %{
 	#include "src/Scanner.h"
 	#include "headers/TreeNode.h"
+	#include "src/StringHolder.h"
 	
 	#define YY_USER_ACTION yylloc->columns(yyleng);
 %}
@@ -18,17 +19,17 @@ INT				[[:digit:]]+
 %}
 
 
-char			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_CHAR; }
-void 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_VOID; }
-int 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }
-struct 			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_STRUCT; }
-float			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_FLOAT; }
-println			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }	
+char			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CHAR; }
+void 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_VOID; }
+int 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }
+struct 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_STRUCT; }
+float			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_FLOAT; }
+println			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }	
 	
 return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 
 
-{IDENTIFIER} 	{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::IDENTIFIER; }
+{IDENTIFIER} 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::IDENTIFIER; }
 "+"			 	{ return Compiler::ASTBuilder::Parser::token::ADD; }
 "-"			 	{ return Compiler::ASTBuilder::Parser::token::SUB; }
 "*"			 	{ return Compiler::ASTBuilder::Parser::token::MUL; }
@@ -53,8 +54,8 @@ return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 "/="			{ return Compiler::ASTBuilder::Parser::token::ASSIGN_DIV; }
 "*="			{ return Compiler::ASTBuilder::Parser::token::ASSIGN_MUL; }
 
-{INT}		 	{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::INT_NUMBER; }
-{FLOAT}			{ yylval->val = new TreeNode(yytext); return Compiler::ASTBuilder::Parser::token::FLOAT_NUMBER; }
+{INT}		 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::INT_NUMBER; }
+{FLOAT}			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::FLOAT_NUMBER; }
 
 " "            	{ yylloc->step(); }
 \t				{ yylloc->step(); }

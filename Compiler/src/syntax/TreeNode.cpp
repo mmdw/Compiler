@@ -5,9 +5,7 @@
  *      Author: user
  */
 #include <cstddef>
+#include <string>
+
 #include "TreeNode.h"
 
-namespace Syntax {
-
-
-} /* namespace Syntax */

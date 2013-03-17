@@ -1,6 +1,14 @@
-void main () {
+void foo(int bar, int zen) {
+	return 19;
+}
+
+void main (int m) {
 	int z;
-	z = (7 + 2) + (9 + 11);
+	int x;
+
+	int m;
+
+	z = (7 + 7) + (9 + x);
 	
 	println(z);
 }
