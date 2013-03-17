@@ -6,9 +6,11 @@
  */
 #include <iostream>
 #include <sstream>
+#include <cassert>
 
 #include "SymbolTable.h"
 #include "CodeGenerator.h"
+#include "TripleTranslator.h"
 
 namespace Compiler {
 
@@ -60,6 +62,7 @@ void CodeGenerator::generateProcedures() {
 	for (std::list<ASTBuilder::TreeNode*>::iterator it = p_root->childs.begin(); it != p_root->childs.end(); ++it) {
 		const ASTBuilder::SymbolId id = (*it)->symbolId;
 		const ASTBuilder::Symbol& symbol = p_table->find(id);
+		ASTBuilder::SymbolType returnType = p_table->funcReturnType(id);
 
 		if (symbol.symbolType != ASTBuilder::SYMBOL_FUNC) {
 			continue;
@@ -67,7 +70,9 @@ void CodeGenerator::generateProcedures() {
 
 		output << "proc " << symbol.value << ' ';
 		if (!(*it)->childs.empty()) {
-			for (std::list<ASTBuilder::TreeNode*>::iterator argsIter = (*it)->at(0)->childs.begin(); argsIter != (*it)->at(0)->childs.end(); ++argsIter) {
+			for (std::list<ASTBuilder::TreeNode*>::iterator argsIter = (*it)->at(0)->childs.begin();
+					argsIter != (*it)->at(0)->childs.end(); ++argsIter) {
+
 				if (argsIter != (*it)->at(0)->childs.begin()) {
 					output << ", ";
 				}
@@ -76,8 +81,78 @@ void CodeGenerator::generateProcedures() {
 			output << std::endl;
 		}
 
-//		output << id << '\t' << symbol.value << std::endl;
+		TripleSequence tripleSequence;
+		generateTripleSequence(returnType, (*it)->at(1), tripleSequence);
+
 		output << "endp" << std::endl;
+	}
+
+}
+
+void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, ASTBuilder::TreeNode* p_node,
+		std::list<Triple>& tripleSequence) {
+
+	switch (p_node->nodeType) {
+	case ASTBuilder::NODE_STATEMENT_BLOCK:
+	case ASTBuilder::NODE_STATEMENT_SEQUENCE:
+		break;
+	case ASTBuilder::NODE_RETURN:
+		tripleSequence.push_back(Triple(returnType == ASTBuilder::SYMBOL_VOID ? TRIPLE_CALL_PROCEDURE : TRIPLE_CALL_FUNCTION));
+		return;
+	case ASTBuilder::NODE_ASSIGN: {
+			ASTBuilder::TreeNode* p_right = p_node->at(1);
+			generateTripleSequence(returnType, p_right, tripleSequence);
+
+			Addr rightAddr = tripleSequence.back().result;
+			Addr leftAddr = symbolToAddr(p_node->at(0)->symbolId);
+
+			return;
+		}
+	case ASTBuilder::NODE_PLUS: {
+			ASTBuilder::TreeNode* p_right = p_node->at(1);
+			ASTBuilder::TreeNode* p_left = p_node->at(0);
+
+			Addr rightAddr;
+			if (p_right->nodeType != ASTBuilder::NODE_SYMBOL) {
+				generateTripleSequence(returnType, p_right, tripleSequence);
+				rightAddr = tripleSequence.back().result;
+			} else {
+				rightAddr = symbolToAddr(p_right->symbolId);
+			}
+
+			Addr leftAddr;
+			if (p_left->nodeType != ASTBuilder::NODE_SYMBOL) {
+				generateTripleSequence(returnType, p_left, tripleSequence);
+				leftAddr = tripleSequence.back().result;
+			} else {
+				leftAddr = symbolToAddr(p_left->symbolId);
+			}
+
+			Addr result = symbolToAddr(p_table->insertTemp(ASTBuilder::SYMBOL_INT));
+
+			tripleSequence.push_back(Triple(TRIPLE_ADD, result, leftAddr, rightAddr));
+		return;
+	}
+
+	case ASTBuilder::NODE_PRINTLN: {
+		ASTBuilder::TreeNode* p_arg = p_node->at(0);
+		Addr argAddr;
+		if (p_arg->nodeType != ASTBuilder::NODE_SYMBOL) {
+			generateTripleSequence(returnType, p_arg, tripleSequence);
+			argAddr = tripleSequence.back().result;
+		} else {
+			argAddr = symbolToAddr(p_arg->symbolId);
+		}
+		tripleSequence.push_back(Triple(TRIPLE_PRINTLN, argAddr));
+		return;
+	}
+
+	default:
+		throw ASTBuilder::nodeTypeToString(p_node->nodeType);
+	}
+
+	for (std::list<ASTBuilder::TreeNode*>::iterator it = p_node->childs.begin(); it != p_node->childs.end(); ++it) {
+		generateTripleSequence(returnType, *it, tripleSequence);
 	}
 
 }

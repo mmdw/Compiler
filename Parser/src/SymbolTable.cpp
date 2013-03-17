@@ -6,6 +6,8 @@
  *      Author: user
  */
 #include <cassert>
+#include <sstream>
+
 #include "../headers/SymbolTable.h"
 
 namespace Compiler {
@@ -100,7 +102,13 @@ SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType)
 	return id;
 }
 
-}
+SymbolId SymbolTable::insertTemp(SymbolType symbolType) {
+	std::ostringstream oss;
+	oss << table.size() + 1;
+
+	return insert(std::string("__temp_") + oss.str(), symbolType, ALLOCATION_VARIABLE_LOCAL);
 }
 
+}
+}
 

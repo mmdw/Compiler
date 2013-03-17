@@ -12,6 +12,7 @@
 
 #include "TreeNode.h"
 #include "SymbolTable.h"
+#include "Triple.h"
 
 namespace Compiler {
 
@@ -25,9 +26,11 @@ class CodeGenerator {
 	void generateProcedures();
 	void generateConstSection();
 
+	void generateTripleSequence(ASTBuilder::SymbolType returnType, ASTBuilder::TreeNode* p_node, TripleSequence& tripleSequence);
+
 	std::string symbolToAddr(ASTBuilder::SymbolId symbolId);
 public:
-	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table);
+	CodeGenerator( ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table);
 	virtual ~CodeGenerator();
 };
 

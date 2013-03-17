@@ -52,6 +52,7 @@ class SymbolTable {
 public:
 	SymbolId 					insert(const std::string& value, SymbolType type, AllocationType allocationType);
 	SymbolId					insertFunc(const std::string& name, SymbolType returnType);
+	SymbolId					insertTemp(SymbolType type);
 	TableType::const_iterator 	begin();
 	TableType::const_iterator	end();
 	const Symbol& 				find(SymbolId symbolId);

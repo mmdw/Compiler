@@ -75,6 +75,8 @@ namespace Compiler {
 
 			static void printTree(std::ostream& os, TreeNode* root, int tabs);
 		};
+
+		std::string nodeTypeToString(TreeNodeType type);
 	}
 }
 
