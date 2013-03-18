@@ -4,14 +4,9 @@ void main() {
 	float b;
 	float c;
 	
-	int d;
-	
-	d = 42;
-	
-	a = 2.0;
-	b = 3.0;
-	a = 100;
-	c = a + b + d;
+	a = 10.0;
+	b = 2.0;
+	c = a * b;
 
 	println(c);
 }

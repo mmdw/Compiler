@@ -32,8 +32,8 @@ namespace Compiler {
 			case NODE_GREATER:				return "NODE_GREATER";
 			case NODE_GREATER_EQUAL:		return "NODE_GREATER_EQUAL";
 
-			case NODE_PLUS:					return "NODE_PLUS";
-			case NODE_MINUS:				return "NODE_MINUS";
+			case NODE_ADD:					return "NODE_A";
+			case NODE_SUB:					return "NODE_SUB";
 			case NODE_MUL:					return "NODE_MUL";
 			case NODE_DIV:					return "NODE_DIV";
 

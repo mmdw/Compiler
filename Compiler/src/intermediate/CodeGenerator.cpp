@@ -172,7 +172,10 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 
 			return;
 		}
-	case ASTBuilder::NODE_PLUS: {
+	case ASTBuilder::NODE_DIV:
+	case ASTBuilder::NODE_MUL:
+	case ASTBuilder::NODE_SUB:
+	case ASTBuilder::NODE_ADD: {
 			ASTBuilder::TreeNode* p_right = p_node->at(1);
 			ASTBuilder::TreeNode* p_left = p_node->at(0);
 
@@ -195,16 +198,47 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 			const SymbolType leftType = p_table->find(leftAddr).symbolType;
 			const SymbolType rightType = p_table->find(rightAddr).symbolType;
 
+			SymbolId result = SYMBOL_UNDEFINED;
 			if (leftType == SYMBOL_FLOAT || rightType == SYMBOL_FLOAT) {
-				SymbolId result = p_table->insertTemp(ASTBuilder::SYMBOL_FLOAT);
+				result = p_table->insertTemp(ASTBuilder::SYMBOL_FLOAT);
 
 				leftAddr = castSymbol(SYMBOL_FLOAT, leftAddr, tripleSequence);
 				rightAddr = castSymbol(SYMBOL_FLOAT, rightAddr, tripleSequence);
 
-				tripleSequence.push_back(Triple(TRIPLE_ADD_FLOAT, result, leftAddr, rightAddr));
+				switch (p_node->nodeType) {
+				case NODE_ADD:
+					tripleSequence.push_back(Triple(TRIPLE_ADD_FLOAT, result, leftAddr, rightAddr));
+					break;
+				case NODE_SUB:
+					tripleSequence.push_back(Triple(TRIPLE_SUB_FLOAT, result, leftAddr, rightAddr));
+					break;
+				case NODE_DIV:
+					tripleSequence.push_back(Triple(TRIPLE_DIV_FLOAT, result, leftAddr, rightAddr));
+					break;
+				case NODE_MUL:
+					tripleSequence.push_back(Triple(TRIPLE_MUL_FLOAT, result, leftAddr, rightAddr));
+					break;
+				default:
+					throw ASTBuilder::nodeTypeToString(p_node->nodeType);
+				}
 			} else {
-				SymbolId result = p_table->insertTemp(ASTBuilder::SYMBOL_INT);
-				tripleSequence.push_back(Triple(TRIPLE_ADD_INT, result, leftAddr, rightAddr));
+				result = p_table->insertTemp(ASTBuilder::SYMBOL_INT);
+				switch (p_node->nodeType) {
+				case NODE_ADD:
+					tripleSequence.push_back(Triple(TRIPLE_ADD_INT, result, leftAddr, rightAddr));
+					break;
+				case NODE_SUB:
+					tripleSequence.push_back(Triple(TRIPLE_SUB_INT, result, leftAddr, rightAddr));
+					break;
+				case NODE_DIV:
+					tripleSequence.push_back(Triple(TRIPLE_DIV_INT, result, leftAddr, rightAddr));
+					break;
+				case NODE_MUL:
+					tripleSequence.push_back(Triple(TRIPLE_MUL_INT, result, leftAddr, rightAddr));
+					break;
+				default:
+					throw ASTBuilder::nodeTypeToString(p_node->nodeType);
+				}
 			}
 		return;
 	}

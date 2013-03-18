@@ -14,6 +14,12 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_ADD_FLOAT: 				return "ADD_FLOAT";
 			case TRIPLE_ADD_INT:				return "ADD_INT";
 			case TRIPLE_COPY: 					return "COPY";
+			case TRIPLE_SUB_FLOAT:				return "SUB_FLOAT";
+			case TRIPLE_SUB_INT:				return "SUB_INT";
+			case TRIPLE_MUL_FLOAT:				return "MUL_FLOAT";
+			case TRIPLE_MUL_INT:				return "MUL_INT";
+			case TRIPLE_DIV_FLOAT:				return "DIV_FLOAT";
+			case TRIPLE_DIV_INT:				return "DIV_INT";
 			case TRIPLE_RETURN_FUNCTION:		return "RETURN_FUNCTION";
 			case TRIPLE_RETURN_PROCEDURE:		return "RETURN_PROCEDURE";
 			case TRIPLE_PUSH:					return "PUSH";

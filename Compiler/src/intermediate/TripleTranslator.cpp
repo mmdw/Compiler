@@ -12,6 +12,7 @@
 namespace Compiler {
 
 static const std::string EAX 		= "eax";
+static const std::string EDX		= "edx";
 static const std::string RET 		= "ret";
 static const std::string PUSH 		= "push";
 static const std::string CALL		= "call";
@@ -25,6 +26,10 @@ static std::string mov(const std::string& arg1, const std::string& arg2) {
 
 static std::string add(const std::string& arg1, const std::string& arg2) {
 	return "add\t" + arg1 + ", " + arg2;
+}
+
+static std::string sub(const std::string& arg1, const std::string& arg2) {
+	return "sub\t" + arg1 + ", " + arg2;
 }
 
 static void append(std::ostream& os, const std::string& line) {
@@ -75,6 +80,30 @@ static std::string fadd(const std::string& arg) {
 	return "fadd\tdword\t" + arg;
 }
 
+static std::string fsub(const std::string& arg) {
+	return "fsub\tdword\t" + arg;
+}
+
+static std::string idiv(const std::string& arg1) {
+	return "idiv\t" + arg1;
+}
+
+static std::string fdiv(const std::string& arg) {
+	return "fdiv\tdword\t" + arg;
+}
+
+static std::string fmul(const std::string& arg) {
+	return "fmul\tdword\t" + arg;
+}
+
+static std::string _xor(const std::string& arg1, const std::string& arg2) {
+	return "xor\t " + arg1 + ", " + arg2;
+}
+
+static std::string imul(const std::string& arg1, const std::string& arg2) {
+	return "imul\t" + arg1 + ", " + arg2;
+}
+
 void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream& os,
 		 std::list<Triple>& tripleSequence) {
 
@@ -86,11 +115,41 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, add(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
 			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
-
 			break;
 		case TRIPLE_ADD_FLOAT:
 			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, fadd(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
+			break;
+		case TRIPLE_SUB_INT:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, sub(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
+		case TRIPLE_SUB_FLOAT:
+			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fsub(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
+			break;
+		case TRIPLE_MUL_INT:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, imul(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
+		case TRIPLE_MUL_FLOAT:
+			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fmul(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
+			break;
+		case TRIPLE_DIV_INT:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, _xor(EDX, EDX));
+			append(os, idiv(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
+		case TRIPLE_DIV_FLOAT:
+			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fdiv(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
 			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
 			break;
 		case TRIPLE_RETURN_PROCEDURE:
