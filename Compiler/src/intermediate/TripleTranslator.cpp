@@ -7,7 +7,7 @@
 
 #include <algorithm>
 #include "TripleTranslator.h"
-
+#include "CodeGenerator.h"
 
 namespace Compiler {
 
@@ -43,43 +43,90 @@ static std::string call(const std::string& arg) {
 	return CALL + '\t' + arg;
 }
 
-static std::string println(const std::string& arg) {
+static std::string printlnInt(const std::string& arg) {
 	return "ccall\t[printf], __format_int, dword " + arg;
 }
 
-void TripleTranslator::translate(std::ostream& os,
-		std::list<Triple>& tripleSequence) {
+static std::string printlnDoubleFloat(const std::string& dword1, const std::string& dword2) {
+	return "ccall\t[printf], __format_float, dword " + dword1 + ", dword " + dword2;
+}
+
+static std::string fild(const std::string& arg) {
+	return "fild\tdword\t" + arg;
+}
+
+static std::string fstp(const std::string& arg) {
+	return "fstp\tdword\t" + arg;
+}
+
+static std::string fld_dword(const std::string& arg) {
+	return "fld\tdword\t" + arg;
+}
+
+static std::string fstp_qword(const std::string& arg) {
+	return "fstp\tqword\t" + arg;
+}
+
+static std::string fld(const std::string& arg) {
+	return "fld\tdword\t" + arg;
+}
+
+static std::string fadd(const std::string& arg) {
+	return "fadd\tdword\t" + arg;
+}
+
+void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream& os,
+		 std::list<Triple>& tripleSequence) {
 
 	for (std::list<Triple>::iterator it = tripleSequence.begin(); it != tripleSequence.end(); ++it) {
 		Triple triple = *it;
 
 		switch(triple.op) {
-		case TRIPLE_ADD:
-			append(os, mov(EAX, b(triple.arg1)));
-			append(os, add(EAX, b(triple.arg2)));
-			append(os, mov(b(triple.result), EAX));
+		case TRIPLE_ADD_INT:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, add(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
 
+			break;
+		case TRIPLE_ADD_FLOAT:
+			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fadd(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
 			break;
 		case TRIPLE_RETURN_PROCEDURE:
 			append(os, RET);
 			break;
 		case TRIPLE_RETURN_FUNCTION:
-			append(os, mov(EAX, b(triple.arg1)));
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, RET);
 			break;
 		case TRIPLE_COPY:
-			append(os, mov(EAX, b(triple.arg1)));
-			append(os, mov(b(triple.result), EAX));
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
 			break;
 		case TRIPLE_PUSH:
-			append(os, push(b(triple.arg1)));
+			append(os, push(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			break;
 		case TRIPLE_CALL_FUNCTION:
-			append(os, call(triple.arg1));
-			append(os, mov(b(triple.result), EAX));
+			append(os, call(CodeGenerator::symbolToAddr(p_table, triple.arg1)));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
 			break;
-		case TRIPLE_PRINTLN:
-			append(os, println(b(triple.arg1)));
+		case TRIPLE_PRINTLN_INT:
+			append(os, printlnInt(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			break;
+		case TRIPLE_PRINTLN_DOUBLE_FLOAT:
+			append(os, printlnDoubleFloat(
+					b(CodeGenerator::symbolToAddr(p_table, triple.arg1)),
+					b(CodeGenerator::symbolToAddr(p_table, triple.arg1) + " + 4")
+				));
+			break;
+		case TRIPLE_INT_TO_FLOAT:
+			append(os, fild(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
+			break;
+		case TRIPLE_FLOAT_TO_DOUBLE_FLOAT:
+			append(os, fld_dword(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fstp_qword(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
 			break;
 		default:
 			throw std::string("translate failed: ") + tripleOpToString(triple.op);

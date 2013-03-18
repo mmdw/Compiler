@@ -12,13 +12,14 @@
 #include <ostream>
 
 #include "Triple.h"
+#include "SymbolTable.h"
 
 namespace Compiler {
 
 class TripleTranslator {
 public:
 	TripleTranslator();
-	void translate(std::ostream& os, std::list<Triple>& tripleSequence);
+	void translate(ASTBuilder::SymbolTable* p_table, std::ostream& os, std::list<Triple>& tripleSequence);
 
 	virtual ~TripleTranslator();
 };

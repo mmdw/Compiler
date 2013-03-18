@@ -10,6 +10,7 @@
 
 #include <ostream>
 
+#include "TripleTranslator.h"
 #include "TreeNode.h"
 #include "SymbolTable.h"
 #include "Triple.h"
@@ -22,15 +23,23 @@ class CodeGenerator {
 
 	std::ostream& 				output;
 
+	TripleTranslator			tripleTranslator;
+
+	SymbolId castSymbol(SymbolType targetType, SymbolId symbol, TripleSequence& tripleSequence);
+
 	void generateHeader();
 	void generateProcedures();
 	void generateConstSection();
+	void generateFooter();
+
+	void validate();
 
 	void generateTripleSequence(ASTBuilder::SymbolType returnType, ASTBuilder::TreeNode* p_node, TripleSequence& tripleSequence);
-
-	std::string symbolToAddr(ASTBuilder::SymbolId symbolId);
+	void generateLocalVariables(TripleSequence& tripleSequence);
 public:
-	CodeGenerator( ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table);
+	static std::string symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBuilder::SymbolId symbolId);
+
+	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table);
 	virtual ~CodeGenerator();
 };
 

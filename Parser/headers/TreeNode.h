@@ -14,6 +14,8 @@
 
 namespace Compiler {
 	namespace ASTBuilder {
+		const signed SYMBOL_UNDEFINED = -1;
+
 		typedef signed SymbolId;
 
 		enum TreeNodeType {

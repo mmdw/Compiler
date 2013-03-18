@@ -15,10 +15,11 @@ namespace ASTBuilder {
 
 std::string symbolTypeToString(SymbolType type) {
 	switch (type) {
-		case SYMBOL_FLOAT: return "SYMBOL_FLOAT";
-		case SYMBOL_FUNC:  return "SYMBOL_FUNC";
-		case SYMBOL_INT:   return "SYMBOL_INT";
-		case SYMBOL_VOID:  return "SYMBOL_VOID";
+		case SYMBOL_FLOAT: 			return "SYMBOL_FLOAT";
+		case SYMBOL_FUNC:  			return "SYMBOL_FUNC";
+		case SYMBOL_INT:   			return "SYMBOL_INT";
+		case SYMBOL_VOID:  			return "SYMBOL_VOID";
+		case SYMBOL_DOUBLE_FLOAT:	return "SYMBOL_DOUBLE_FLOAT";
 		default:
 			throw std::string("symbolTypeToString");
 	}

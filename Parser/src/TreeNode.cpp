@@ -57,7 +57,7 @@ namespace Compiler {
 
 	 	static void newline(std::ostream& os, int tabs);
 
-		TreeNode::TreeNode(TreeNodeType type) : nodeType(type), symbolId(-1) {
+		TreeNode::TreeNode(TreeNodeType type) : nodeType(type), symbolId(SYMBOL_UNDEFINED) {
 		}
 
 		TreeNode* TreeNode::append(TreeNode* p_node) {

@@ -9,7 +9,7 @@
 %option nodefault yyclass="Scanner" noyywrap c++
 
 IDENTIFIER		[[:alpha:]][[:alnum:]]*
-FLOAT			[[:digit:]]\.[[:digit:]]*
+FLOAT			[[:digit:]]+.[[:digit:]]+
 INT				[[:digit:]]+
 
 %%
@@ -60,4 +60,4 @@ return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 " "            	{ yylloc->step(); }
 \t				{ yylloc->step(); }
 \n      	 	{ yylloc->step(); }
-.				{ throw std::string("unknown token"); }
+.				{ throw std::string("unknown token: ") + yytext; }

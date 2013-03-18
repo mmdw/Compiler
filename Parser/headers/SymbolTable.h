@@ -21,6 +21,7 @@ typedef signed SymbolId;
 enum SymbolType {
 	SYMBOL_INT,
 	SYMBOL_FLOAT,
+	SYMBOL_DOUBLE_FLOAT,
 	SYMBOL_FUNC,
 	SYMBOL_VOID
 };
@@ -57,6 +58,8 @@ public:
 	TableType::const_iterator	end();
 	const Symbol& 				find(SymbolId symbolId);
 	SymbolType					funcReturnType(SymbolId funcId);
+
+
 
 	void debug(std::ostream& os);
 };

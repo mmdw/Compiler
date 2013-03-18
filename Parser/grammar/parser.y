@@ -100,8 +100,8 @@ typename : KEYWORD_CHAR
  | KEYWORD_VOID									
  ;
  
-func_decl : typename IDENTIFIER OP func_arg_definition CP block 
-	{ TreeNode* p_node = (new TreeNode(NODE_FUNCTION_DEFINITION))->append($4)->append($6);
+func_decl : typename IDENTIFIER OP marker_block_start func_arg_definition CP block marker_block_end 
+	{ TreeNode* p_node = (new TreeNode(NODE_FUNCTION_DEFINITION))->append($5)->append($7);
 	  p_node->symbolId = p_resolver->insertFunction(*$1, *$2);   
 	  $$ =  p_node; }
  ;

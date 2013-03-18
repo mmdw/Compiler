@@ -1,15 +1,17 @@
-void foo(int bar, int zen) {
-	return 19;
-}
 
-void main (int m) {
-	int z;
-	int x;
-
-	int m;
-
-	z = 7 + 1;
+void main() {
+	float a;
+	float b;
+	float c;
 	
-	println(z);
-}
+	int d;
+	
+	d = 42;
+	
+	a = 2.0;
+	b = 3.0;
+	a = 100;
+	c = a + b + d;
 
+	println(c);
+}
