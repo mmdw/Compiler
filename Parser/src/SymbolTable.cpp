@@ -85,11 +85,11 @@ const Symbol& SymbolTable::find(SymbolId symbolId) {
 SymbolType SymbolTable::funcReturnType(SymbolId funcId) {
 	assert(find(funcId).symbolType == SYMBOL_FUNC);
 
-	return funcTable.at(funcId);
+	return funcTable.at(funcId).first;
 
 }
 
-SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType) {
+SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType, const std::list<SymbolId>& args) {
 	SymbolId id = table.size();
 	Symbol row;
 
@@ -98,7 +98,8 @@ SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType)
 	row.value = name;
 
 	table.insert(std::pair<SymbolId, Symbol>(table.size(), row));
-	funcTable.insert(FuncTableType::value_type(id, returnType));
+	funcTable.insert(FuncTableType::value_type(id,
+			std::pair<SymbolType, std::list<SymbolId> > (returnType, args)));
 
 	return id;
 }
@@ -108,6 +109,12 @@ SymbolId SymbolTable::insertTemp(SymbolType symbolType) {
 	oss << table.size() + 1;
 
 	return insert(std::string("__temp_") + oss.str(), symbolType, ALLOCATION_VARIABLE_LOCAL);
+}
+
+const std::list<SymbolId>& SymbolTable::funcArgList(SymbolId funcId) {
+	assert(find(funcId).symbolType == SYMBOL_FUNC);
+
+	return funcTable.at(funcId).second;
 }
 
 }

@@ -60,6 +60,10 @@ std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBui
 
 	const std::string strSymbol = Util::to_string(symbolId);
 
+	if (symbol.symbolType == SYMBOL_FUNC) {
+		return symbol.value;
+	}
+
 	switch (symbol.allocationType) {
 	case ASTBuilder::ALLOCATION_VARIABLE_LOCAL: 	return std::string("__local_") + strSymbol;
 	case ASTBuilder::ALLOCATION_CONST_GLOBAL:		return std::string("__const_") + strSymbol;
@@ -74,26 +78,33 @@ void CodeGenerator::generateProcedures() {
 		const ASTBuilder::SymbolId id = (*it)->symbolId;
 		const ASTBuilder::Symbol& symbol = p_table->find(id);
 		ASTBuilder::SymbolType returnType = p_table->funcReturnType(id);
+		const std::list<SymbolId>& args = p_table->funcArgList(id);
 
 		if (symbol.symbolType != ASTBuilder::SYMBOL_FUNC) {
 			continue;
 		}
 
 		output << "proc " << symbol.value << ' ';
-		if (!(*it)->childs.empty()) {
-			for (std::list<ASTBuilder::TreeNode*>::iterator argsIter = (*it)->at(0)->childs.begin();
-					argsIter != (*it)->at(0)->childs.end(); ++argsIter) {
-
-				if (argsIter != (*it)->at(0)->childs.begin()) {
+		if (!args.empty()) {
+			for (std::list<SymbolId>::const_iterator it = args.begin(); it != args.end(); ++it) {
+				if (it != args.begin()) {
 					output << ", ";
 				}
-				output << symbolToAddr(p_table, (*argsIter)->symbolId);
+
+				output << symbolToAddr(p_table, (*it));
 			}
-			output << std::endl;
 		}
 
+//		SymbolId returnRef = SYMBOL_UNDEFINED;
+		if (returnType != SYMBOL_VOID) {
+//			returnRef = p_table->insertTemp(returnType);
+			output << (!args.empty() ? ", " : "") << "__ret_ref";
+		}
+
+		output << std::endl;
+
 		TripleSequence tripleSequence;
-		generateTripleSequence(returnType, (*it)->at(1), tripleSequence);
+		generateTripleSequence(returnType, (*it)->at(0), tripleSequence);
 		if (returnType == SYMBOL_VOID) {
 			if (tripleSequence.empty() || tripleSequence.back().op != TRIPLE_RETURN_PROCEDURE) {
 				tripleSequence.push_back(Triple(TRIPLE_RETURN_PROCEDURE));
@@ -145,9 +156,34 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 	switch (p_node->nodeType) {
 	case ASTBuilder::NODE_STATEMENT_BLOCK:
 	case ASTBuilder::NODE_STATEMENT_SEQUENCE:
+		for (std::list<ASTBuilder::TreeNode*>::iterator it = p_node->childs.begin(); it != p_node->childs.end(); ++it) {
+			generateTripleSequence(returnType, *it, tripleSequence);
+		}
 		break;
-	case ASTBuilder::NODE_RETURN:
-		tripleSequence.push_back(Triple(returnType == ASTBuilder::SYMBOL_VOID ? TRIPLE_RETURN_PROCEDURE : TRIPLE_RETURN_FUNCTION));
+	case ASTBuilder::NODE_RETURN: {
+			if (returnType == SYMBOL_VOID) {
+				if (!p_node->childs.empty()) {
+					throw std::string("procedure cannot return value");
+				}
+				tripleSequence.push_back(Triple(TRIPLE_RETURN_PROCEDURE));
+			} else  {
+				if (p_node->childs.empty()) {
+					throw std::string("function must return value");
+				}
+
+				TreeNode* p_right = p_node->at(0);
+
+				SymbolId rightAddr;
+				if (p_right->nodeType != NODE_SYMBOL) {
+					generateTripleSequence(returnType, p_right, tripleSequence);
+					rightAddr = castSymbol(returnType, tripleSequence.back().result, tripleSequence);
+				} else {
+					rightAddr = castSymbol(returnType, p_right->symbolId, tripleSequence);
+				}
+
+				tripleSequence.push_back(Triple(TRIPLE_RETURN_FUNCTION, rightAddr));
+			}
+		}
 		return;
 	case ASTBuilder::NODE_ASSIGN: {
 			ASTBuilder::TreeNode* p_right = p_node->at(1);
@@ -242,7 +278,6 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 			}
 		return;
 	}
-
 	case ASTBuilder::NODE_PRINTLN: {
 		ASTBuilder::TreeNode* p_arg = p_node->at(0);
 		SymbolId argAddr = SYMBOL_UNDEFINED;
@@ -269,15 +304,57 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 		}
 		return;
 	}
+	case NODE_CALL: {
+		SymbolId funcId = p_node->at(0)->symbolId;
+		SymbolType retType = p_table->funcReturnType(funcId);
 
+		const std::list<SymbolId>& funcArgs = p_table->funcArgList(funcId);
+
+		if (p_node->at(1)->childs.size() != funcArgs.size()) {
+			throw std::string("wrong call func \"") + p_table->find(funcId).value + "\": different number of arguments";
+		}
+
+		SymbolId retReference = SYMBOL_UNDEFINED;
+		if (retType != SYMBOL_VOID) {
+			retReference = p_table->insertTemp(retType);
+			tripleSequence.push_back(Triple(TRIPLE_PUSH_PTR, retReference));
+		}
+
+		int i = 0;
+		for (std::list<SymbolId>::const_iterator it = funcArgs.begin(); it != funcArgs.end(); ++it, ++i) {
+			SymbolType targetType = p_table->find(*it).symbolType;
+			TreeNode* p_param = p_node->at(1)->at(i);
+
+			SymbolId paramId = SYMBOL_UNDEFINED;
+			if (p_param->nodeType != NODE_SYMBOL) {
+				generateTripleSequence(returnType, p_param, tripleSequence);
+				paramId = castSymbol(targetType, tripleSequence.back().result, tripleSequence);
+			} else {
+				paramId = castSymbol(targetType, p_param->symbolId, tripleSequence);
+			}
+
+			switch (targetType) {
+			case SYMBOL_FLOAT:
+				tripleSequence.push_back(Triple(TRIPLE_PUSH_FLOAT, paramId));
+				break;
+			case SYMBOL_INT:
+				tripleSequence.push_back(Triple(TRIPLE_PUSH_INT, paramId));
+				break;
+			default:
+				throw std::string("NODE_CALL");
+			}
+		}
+
+		if (retType != SYMBOL_VOID) {
+			tripleSequence.push_back(Triple(TRIPLE_CALL_FUNCTION, retReference, funcId));
+		} else {
+			tripleSequence.push_back(Triple(TRIPLE_CALL_PROCEDURE, funcId));
+		}
+	}
+	break;
 	default:
 		throw ASTBuilder::nodeTypeToString(p_node->nodeType);
 	}
-
-	for (std::list<ASTBuilder::TreeNode*>::iterator it = p_node->childs.begin(); it != p_node->childs.end(); ++it) {
-		generateTripleSequence(returnType, *it, tripleSequence);
-	}
-
 }
 
 void CodeGenerator::generateFooter() {
@@ -299,6 +376,8 @@ void CodeGenerator::validate() {
 }
 
 SymbolId CodeGenerator::castSymbol(SymbolType targetType, SymbolId id, TripleSequence& tripleSequence) {
+	assert(id != SYMBOL_UNDEFINED);
+
 	const Symbol& symbol = p_table->find(id);
 
 	if (targetType == symbol.symbolType) {
@@ -329,6 +408,7 @@ SymbolId CodeGenerator::castSymbol(SymbolType targetType, SymbolId id, TripleSeq
 
 	throw std::string("cant convert from ") + symbolTypeToString(targetType) + " to " + symbolTypeToString(symbol.symbolType);
 }
+
 
 CodeGenerator::~CodeGenerator() {
 	// TODO Auto-generated destructor stub

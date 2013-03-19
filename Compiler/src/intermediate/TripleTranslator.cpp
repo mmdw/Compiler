@@ -16,6 +16,11 @@ static const std::string EDX		= "edx";
 static const std::string RET 		= "ret";
 static const std::string PUSH 		= "push";
 static const std::string CALL		= "call";
+static const std::string ESI		= "esi";
+static const std::string EDI		= "edi";
+static const std::string CLD		= "cld";
+static const std::string ECX		= "ecx";
+static const std::string REP_MOVSD  = "rep movsd";
 
 TripleTranslator::TripleTranslator() {
 }
@@ -104,6 +109,10 @@ static std::string imul(const std::string& arg1, const std::string& arg2) {
 	return "imul\t" + arg1 + ", " + arg2;
 }
 
+static std::string lea(const std::string& arg1, const std::string& arg2) {
+	return "lea\t" + arg1 + ", "+ arg2;
+}
+
 void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream& os,
 		 std::list<Triple>& tripleSequence) {
 
@@ -156,19 +165,24 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 			append(os, RET);
 			break;
 		case TRIPLE_RETURN_FUNCTION:
-			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, lea(ESI, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, mov(EDI, b("__ret_ref")));
+			append(os, mov(ECX, "2")); // FIXME
+			append(os, CLD);
+			append(os, REP_MOVSD);
 			append(os, RET);
 			break;
 		case TRIPLE_COPY:
 			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
 			break;
-		case TRIPLE_PUSH:
+
+		case TRIPLE_PUSH_FLOAT:
+		case TRIPLE_PUSH_INT:
 			append(os, push(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			break;
 		case TRIPLE_CALL_FUNCTION:
 			append(os, call(CodeGenerator::symbolToAddr(p_table, triple.arg1)));
-			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
 			break;
 		case TRIPLE_PRINTLN_INT:
 			append(os, printlnInt(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
@@ -186,6 +200,10 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 		case TRIPLE_FLOAT_TO_DOUBLE_FLOAT:
 			append(os, fld_dword(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, fstp_qword(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
+			break;
+		case TRIPLE_PUSH_PTR:
+			append(os, lea(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, push(EAX));
 			break;
 		default:
 			throw std::string("translate failed: ") + tripleOpToString(triple.op);

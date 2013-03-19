@@ -1,12 +1,11 @@
+int f(int x) {
+	println(x);
+	return 12 + x;
+}
 
 void main() {
-	float a;
-	float b;
-	float c;
-	
-	a = 10.0;
-	b = 2.0;
-	c = a * b;
+	int a;
 
-	println(c);
+	a = f(1);
+	println(a);
 }

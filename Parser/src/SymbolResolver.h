@@ -41,14 +41,14 @@ public:
 		return id;
 	}
 
-	SymbolId insertFunction(SymbolType returnType, const std::string& identifier) {
+	SymbolId insertFunction(SymbolType returnType, const std::string& identifier, const std::list<SymbolId>& args) {
 		IdentifierTable& table = tableStack.back();
 
 		if (table.find(identifier) != table.end()) {
 			throw std::string("identifier ") + identifier + std::string(" already exists in this scope");
 		}
 
-		SymbolId id = p_table->insertFunc(identifier, returnType);
+		SymbolId id = p_table->insertFunc(identifier, returnType, args);
 		table.insert(IdentifierTable::value_type(identifier, id));
 
 		return id;
@@ -64,17 +64,17 @@ public:
 		}
 	}
 
-	SymbolId insertFunction(const std::string& returnType, const std::string& identifier) {
+	SymbolId insertFunction(const std::string& returnType, const std::string& identifier, const std::list<SymbolId>& args) {
 		if (returnType == "void") {
-			return insertFunction(SYMBOL_VOID, identifier);
+			return insertFunction(SYMBOL_VOID, identifier, args);
 		}
 
 		if (returnType == "int") {
-			return insertFunction(SYMBOL_INT, identifier);
+			return insertFunction(SYMBOL_INT, identifier, args);
 		}
 
 		if (returnType == "float") {
-			return insertFunction(SYMBOL_FLOAT, identifier);
+			return insertFunction(SYMBOL_FLOAT, identifier, args);
 		}
 	}
 

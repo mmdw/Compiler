@@ -22,7 +22,9 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_DIV_INT:				return "DIV_INT";
 			case TRIPLE_RETURN_FUNCTION:		return "RETURN_FUNCTION";
 			case TRIPLE_RETURN_PROCEDURE:		return "RETURN_PROCEDURE";
-			case TRIPLE_PUSH:					return "PUSH";
+			case TRIPLE_PUSH_INT:				return "PUSH_INT";
+			case TRIPLE_PUSH_FLOAT:				return "PUSH_FLOAT";
+			case TRIPLE_PUSH_PTR:				return "PUSH_PTR";
 			case TRIPLE_CALL_FUNCTION:			return "CALL_FUNCTION";
 			case TRIPLE_CALL_PROCEDURE: 		return "CALL_PROCEDURE";
 			case TRIPLE_INT_TO_FLOAT:			return "INT_TO_FLOAT";

@@ -13,6 +13,7 @@
 	#include <string>
 	#include <sstream>
 	#include <map>
+	#include <list>
 	#include "src/SymbolResolver.h"
 	#include "headers/TreeNode.h"
 	
@@ -101,8 +102,15 @@ typename : KEYWORD_CHAR
  ;
  
 func_decl : typename IDENTIFIER OP marker_block_start func_arg_definition CP block marker_block_end 
-	{ TreeNode* p_node = (new TreeNode(NODE_FUNCTION_DEFINITION))->append($5)->append($7);
-	  p_node->symbolId = p_resolver->insertFunction(*$1, *$2);   
+	{ 
+	  std::list<SymbolId> args;
+	  TreeNode* p_args = $5;
+	  for (std::list<TreeNode*>::const_iterator it = p_args->childs.begin(); it != p_args->childs.end(); ++it) {
+	  	args.push_back((*it)->symbolId);
+	  }
+	  
+	  TreeNode* p_node = (new TreeNode(NODE_FUNCTION_DEFINITION))->append($7);
+	  p_node->symbolId = p_resolver->insertFunction(*$1, *$2, args);   
 	  $$ =  p_node; }
  ;
 
@@ -178,8 +186,8 @@ exp_logic_4 : exp_arithm
  ;
 
 exp_arithm: factor
- | exp_arithm ADD factor						{ $$ = (new TreeNode(NODE_PLUS))->append($1)->append($3); }
- | exp_arithm SUB factor						{ $$ = (new TreeNode(NODE_MINUS))->append($1)->append($3); }
+ | exp_arithm ADD factor						{ $$ = (new TreeNode(NODE_ADD))->append($1)->append($3); }
+ | exp_arithm SUB factor						{ $$ = (new TreeNode(NODE_SUB))->append($1)->append($3); }
  ;
 
 factor: term

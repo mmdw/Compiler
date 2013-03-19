@@ -8,8 +8,8 @@
 #ifndef SYMBOLTABLE_H_
 #define SYMBOLTABLE_H_
 
+#include <list>
 #include <ostream>
-
 #include <string>
 #include <map>
 
@@ -44,21 +44,24 @@ struct Symbol {
 };
 
 class SymbolTable {
-	typedef std::map<SymbolId, Symbol> 		TableType;
-	typedef std::map<SymbolId, SymbolType>	FuncTableType;
+	typedef std::map<SymbolId, Symbol> 						TableType;
+	typedef std::pair<SymbolType, std::list<SymbolId> > 	FuncTableRow;
+	typedef std::map<SymbolId, FuncTableRow>				FuncTableType;
 
 	TableType 								table;
 	FuncTableType							funcTable;
 
 public:
 	SymbolId 					insert(const std::string& value, SymbolType type, AllocationType allocationType);
-	SymbolId					insertFunc(const std::string& name, SymbolType returnType);
+	SymbolId					insertFunc(const std::string& name, SymbolType returnType, const std::list<SymbolId>& args);
 	SymbolId					insertTemp(SymbolType type);
+	SymbolId					insertArgRef(SymbolType type);
+
 	TableType::const_iterator 	begin();
 	TableType::const_iterator	end();
 	const Symbol& 				find(SymbolId symbolId);
 	SymbolType					funcReturnType(SymbolId funcId);
-
+	const std::list<SymbolId>&	funcArgList(SymbolId symbolId);
 
 
 	void debug(std::ostream& os);
