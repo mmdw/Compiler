@@ -1,11 +1,7 @@
-int f(int x) {
-	println(x);
-	return 12 + x;
+bool f(float a, float b) {
+	return a < b;
 }
 
 void main() {
-	int a;
-
-	a = f(1);
-	println(a);
+	println(f(1.0, 2.0));
 }

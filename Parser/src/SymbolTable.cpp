@@ -19,6 +19,7 @@ std::string symbolTypeToString(SymbolType type) {
 		case SYMBOL_FUNC:  			return "SYMBOL_FUNC";
 		case SYMBOL_INT:   			return "SYMBOL_INT";
 		case SYMBOL_VOID:  			return "SYMBOL_VOID";
+		case SYMBOL_BOOL:			return "SYMBOL_BOOL";
 		case SYMBOL_DOUBLE_FLOAT:	return "SYMBOL_DOUBLE_FLOAT";
 		default:
 			throw std::string("symbolTypeToString");
@@ -42,18 +43,30 @@ SymbolId SymbolTable::insert(const std::string& value,
 
 		assert(type != SYMBOL_FUNC);
 
+		Symbol row;
+		if (type == SYMBOL_BOOL && allocationType == ALLOCATION_CONST_GLOBAL) {
+			if (value == "true") {
+				row.value = "-1";
+			} else if (value == "false") {
+				row.value = "0";
+			} else {
+				throw std::string("value \"") + value + "\" is not a boolean constant";
+			}
+		} else {
+			row.value = value;
+		}
+
+
 		if (allocationType == ALLOCATION_CONST_GLOBAL) {
 			for(TableType::iterator it = table.begin(); it != table.end(); ++it) {
-				if (value == it->second.value) {
+				if (row.value == it->second.value) {
 					return it->first;
 				}
 			}
 		}
 
 		SymbolId id = table.size();
-		Symbol row;
 
-		row.value = value;
 		row.symbolType = type;
 		row.allocationType = allocationType;
 
@@ -115,6 +128,15 @@ const std::list<SymbolId>& SymbolTable::funcArgList(SymbolId funcId) {
 	assert(find(funcId).symbolType == SYMBOL_FUNC);
 
 	return funcTable.at(funcId).second;
+}
+
+int typeSize(SymbolType type) {
+	switch (type) {
+	case SYMBOL_INT	 :	return 4;
+	case SYMBOL_FLOAT:	return 4;
+	default:
+		throw std::string("typeSize");
+	}
 }
 
 }

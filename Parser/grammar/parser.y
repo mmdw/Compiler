@@ -70,11 +70,11 @@
 %type <val> exp_logic_4
 %type <val> identifier
 
-%token <tptr> ADD SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
+%token <tptr> ADD NOT SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
 %token <val>  KEYWORD_RETURN  
 
 %type  <str> typename
-%token <str> INT_NUMBER  FLOAT_NUMBER  KEYWORD_CHAR IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_FLOAT KEYWORD_STRUCT
+%token <str> INT_NUMBER  FLOAT_NUMBER  KEYWORD_CHAR IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_FLOAT KEYWORD_STRUCT KEYWORD_BOOL BOOL_VALUE
 
 %%
 
@@ -96,6 +96,7 @@ local_variable_definition : typename IDENTIFIER SEMICOLON
 
 typename : KEYWORD_CHAR 										
  | KEYWORD_INT
+ | KEYWORD_BOOL
  | KEYWORD_FLOAT									
  | IDENTIFIER
  | KEYWORD_VOID									
@@ -202,10 +203,16 @@ term: INT_NUMBER								{ TreeNode* p_node = new TreeNode(NODE_SYMBOL);
  | FLOAT_NUMBER									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
 												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_FLOAT);
 												  $$ = p_node; } 
+												  
+ | BOOL_VALUE									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
+												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_BOOL);
+												  $$ = p_node; } 
  
  | identifier									{ }
  | OP exp CP 									{ $$ = $2; } 
  | identifier OP func_arg CP					{ $$ = (new TreeNode(NODE_CALL))->append($1)->append($3); }
+ | SUB term										{ $$ = (new TreeNode(NODE_UMINUS))->append($2); 		  }
+ | NOT term										{ $$ = (new TreeNode(NODE_NOT))->append($2); 		  }
  ;
 
 func_arg: 										{ $$ = new TreeNode(NODE_FUNCTION_ARGUMENTS); }

@@ -59,6 +59,8 @@ public:
 			return insert(identifier, SYMBOL_INT, allocationType);
 		} else if (typeName == "float") {
 			return insert(identifier, SYMBOL_FLOAT, allocationType);
+		} else if (typeName == "bool") {
+			return insert(identifier, SYMBOL_BOOL, allocationType);
 		} else {
 			throw std::string("unknown type: ") + typeName;
 		}
@@ -76,6 +78,12 @@ public:
 		if (returnType == "float") {
 			return insertFunction(SYMBOL_FLOAT, identifier, args);
 		}
+
+		if (returnType == "bool") {
+			return insertFunction(SYMBOL_BOOL, identifier, args);
+		}
+
+		throw std::string("insertFunction: unknown type");
 	}
 
 	SymbolId resolve(const std::string& identifier) {

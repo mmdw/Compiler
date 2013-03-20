@@ -36,6 +36,7 @@ namespace Compiler {
 			case NODE_SUB:					return "NODE_SUB";
 			case NODE_MUL:					return "NODE_MUL";
 			case NODE_DIV:					return "NODE_DIV";
+			case NODE_UMINUS:				return "NODE_UMINUS";
 
 			case NODE_CONST_INT:			return "NODE_CONST_INT";
 			case NODE_CONST_FLOAT:			return "NODE_CONST_FLOAT";
@@ -48,8 +49,10 @@ namespace Compiler {
 			case NODE_KEYWORD_PRINTLN:		return "NODE_KEYWORD_PRINTLN";
 			case NODE_KEYWORD_CHAR:			return "NODE_KEYWORD_CHAR";
 			case NODE_KEYWORD_STRUCT:		return "NODE_KEYWORD_STRUCT";
-			case NODE_UNDEFINED:			return "NODE_UNDEFINED";
 
+			case NODE_NOT:					return "NODE_NOT";
+
+			case NODE_UNDEFINED:			return "NODE_UNDEFINED";
 			default:
 				throw std::string("nodeTypeToString: not implemented yet");
 			}

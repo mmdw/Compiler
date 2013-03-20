@@ -23,6 +23,7 @@ enum SymbolType {
 	SYMBOL_FLOAT,
 	SYMBOL_DOUBLE_FLOAT,
 	SYMBOL_FUNC,
+	SYMBOL_BOOL,
 	SYMBOL_VOID
 };
 
@@ -36,6 +37,7 @@ enum AllocationType {
 
 std::string symbolTypeToString		(SymbolType 	type);
 std::string allocationTypeToString	(AllocationType type);
+int			typeSize				(SymbolType		type);
 
 struct Symbol {
 	std::string		value;

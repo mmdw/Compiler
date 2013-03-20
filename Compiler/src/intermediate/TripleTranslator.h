@@ -22,6 +22,9 @@ public:
 	void translate(ASTBuilder::SymbolTable* p_table, std::ostream& os, std::list<Triple>& tripleSequence);
 
 	virtual ~TripleTranslator();
+
+private:
+	std::string cmpInstruction(TripleOp op);
 };
 
 }

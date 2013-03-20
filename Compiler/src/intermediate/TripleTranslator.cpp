@@ -12,6 +12,7 @@
 namespace Compiler {
 
 static const std::string EAX 		= "eax";
+static const std::string EBX 		= "ebx";
 static const std::string EDX		= "edx";
 static const std::string RET 		= "ret";
 static const std::string PUSH 		= "push";
@@ -20,9 +21,14 @@ static const std::string ESI		= "esi";
 static const std::string EDI		= "edi";
 static const std::string CLD		= "cld";
 static const std::string ECX		= "ecx";
-static const std::string REP_MOVSD  = "rep movsd";
+static const std::string REP_MOVSD  = "rep\tmovsd";
 
 TripleTranslator::TripleTranslator() {
+}
+
+
+static std::string inst(const std::string& name, const std::string& arg1, const std::string& arg2) {
+	return name + "\t" + arg1 +",\t" + arg2;
 }
 
 static std::string mov(const std::string& arg1, const std::string& arg2) {
@@ -105,12 +111,36 @@ static std::string _xor(const std::string& arg1, const std::string& arg2) {
 	return "xor\t " + arg1 + ", " + arg2;
 }
 
+static std::string _or(const std::string& arg1, const std::string& arg2) {
+	return "or\t " + arg1 + ", " + arg2;
+}
+
+static std::string _and(const std::string& arg1, const std::string& arg2) {
+	return "and\t " + arg1 + ", " + arg2;
+}
+
 static std::string imul(const std::string& arg1, const std::string& arg2) {
 	return "imul\t" + arg1 + ", " + arg2;
 }
 
 static std::string lea(const std::string& arg1, const std::string& arg2) {
 	return "lea\t" + arg1 + ", "+ arg2;
+}
+
+static std::string neg(const std::string& arg1) {
+	return "neg\t" + arg1;
+}
+
+static std::string _not(const std::string& arg1) {
+	return "not\t" + arg1;
+}
+
+static std::string cmp(const std::string& arg1, const std::string& arg2) {
+	return "cmp\t " + arg1 + ", " + arg2;
+}
+
+static std::string fcomip(const std::string& arg1) {
+	return "fcomip\t" + arg1;
 }
 
 void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream& os,
@@ -120,6 +150,16 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 		Triple triple = *it;
 
 		switch(triple.op) {
+		case TRIPLE_OR:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, _or(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
+		case TRIPLE_AND:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, _and(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
 		case TRIPLE_ADD_INT:
 			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, add(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
@@ -177,6 +217,7 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
 			break;
 
+		case TRIPLE_PUSH_BOOL:
 		case TRIPLE_PUSH_FLOAT:
 		case TRIPLE_PUSH_INT:
 			append(os, push(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
@@ -193,6 +234,11 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 					b(CodeGenerator::symbolToAddr(p_table, triple.arg1) + " + 4")
 				));
 			break;
+		case TRIPLE_PRINTLN_BOOL:
+			append(os, push(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, call("__print_bool"));
+
+			break;
 		case TRIPLE_INT_TO_FLOAT:
 			append(os, fild(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
@@ -205,9 +251,81 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 			append(os, lea(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, push(EAX));
 			break;
+		case TRIPLE_NEG_INT:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, neg(EAX));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
+		case TRIPLE_NEG_FLOAT:
+			append(os, "fldz");
+			append(os, fsub(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fstp(b(CodeGenerator::symbolToAddr(p_table, triple.result))));
+			break;
+		case TRIPLE_NOT:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, _not(EAX));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), EAX));
+			break;
+		case TRIPLE_EQUAL_INT:
+		case TRIPLE_NOT_EQUAL_INT:
+		case TRIPLE_GREATER_INT:
+		case TRIPLE_GREATER_EQUAL_INT:
+		case TRIPLE_LESS_INT:
+		case TRIPLE_LESS_EQUAL_INT:
+			append(os, _xor(ECX, ECX));
+			append(os, mov(EBX, "-1"));
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, cmp(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, inst(cmpInstruction(triple.op), ECX, EBX));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), ECX));
+			break;
+		case TRIPLE_EQUAL_FLOAT:
+		case TRIPLE_NOT_EQUAL_FLOAT:
+		case TRIPLE_GREATER_FLOAT:
+		case TRIPLE_GREATER_EQUAL_FLOAT:
+		case TRIPLE_LESS_FLOAT:
+		case TRIPLE_LESS_EQUAL_FLOAT:
+			append(os, _xor(ECX, ECX));
+			append(os, mov(EBX, "-1"));
+
+			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, fcomip(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
+			append(os, inst(cmpInstruction(triple.op), ECX, EBX));
+			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), ECX));
+			break;
 		default:
 			throw std::string("translate failed: ") + tripleOpToString(triple.op);
 		}
+	}
+}
+
+std::string TripleTranslator::cmpInstruction(TripleOp op) {
+	switch (op) {
+	case TRIPLE_LESS_INT:
+	case TRIPLE_LESS_FLOAT:
+		return "cmovl";
+
+	case TRIPLE_LESS_EQUAL_INT:
+	case TRIPLE_LESS_EQUAL_FLOAT:
+		return "cmovle";
+
+	case TRIPLE_GREATER_EQUAL_INT:
+	case TRIPLE_GREATER_EQUAL_FLOAT:
+		return "cmovge";
+
+	case TRIPLE_GREATER_INT:
+	case TRIPLE_GREATER_FLOAT:
+		return "cmovg";
+
+	case TRIPLE_EQUAL_INT:
+	case TRIPLE_EQUAL_FLOAT:
+		return "cmove";
+
+	case TRIPLE_NOT_EQUAL_INT:
+	case TRIPLE_NOT_EQUAL_FLOAT:
+		return "cmovne";
+	default:
+		throw std::string("cmpInstruction");
 	}
 }
 

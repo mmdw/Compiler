@@ -45,6 +45,9 @@ namespace Compiler {
 			NODE_GREATER,
 			NODE_GREATER_EQUAL,
 
+			NODE_UMINUS,
+			NODE_NOT,
+
 			NODE_ADD,
 			NODE_SUB,
 			NODE_MUL,

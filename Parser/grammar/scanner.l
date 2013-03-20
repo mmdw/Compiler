@@ -24,6 +24,9 @@ void 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  r
 int 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }
 struct 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_STRUCT; }
 float			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_FLOAT; }
+bool			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_BOOL; }
+true			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
+false			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
 println			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }	
 	
 return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
@@ -39,6 +42,7 @@ return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 ")"      	 	{ return Compiler::ASTBuilder::Parser::token::CP; }
 "{"				{ return Compiler::ASTBuilder::Parser::token::OB; }
 "}"				{ return Compiler::ASTBuilder::Parser::token::CB; }
+"!"			 	{ return Compiler::ASTBuilder::Parser::token::NOT; }
 ,				{ return Compiler::ASTBuilder::Parser::token::COMMA; }
 ==				{ return Compiler::ASTBuilder::Parser::token::EQUAL; }
 !=				{ return Compiler::ASTBuilder::Parser::token::NOT_EQUAL; }

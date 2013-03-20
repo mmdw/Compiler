@@ -37,7 +37,7 @@ class CodeGenerator {
 	void generateTripleSequence(ASTBuilder::SymbolType returnType, ASTBuilder::TreeNode* p_node, TripleSequence& tripleSequence);
 	void generateLocalVariables(TripleSequence& tripleSequence);
 
-//	SymbolId maybeEval(ASTBuilder::SymbolType targetType, ASTBuilder::SymbolType returnType, TreeNode* p_node, TripleSequence& tripleSequence);
+	SymbolId maybeEval(ASTBuilder::SymbolType returnType, TreeNode* p_node, TripleSequence& tripleSequence);
 public:
 	static std::string symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBuilder::SymbolId symbolId);
 
