@@ -68,9 +68,12 @@
 %type <val> exp_logic_2
 %type <val> exp_logic_3
 %type <val> exp_logic_4
+%type <val> while_statement
 %type <val> identifier
+%type <val> if_statement
 
-%token <tptr> ADD NOT SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
+
+%token <tptr> ADD NOT SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN KEYWORD_IF KEYWORD_ELSE KEYWORD_WHILE ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
 %token <val>  KEYWORD_RETURN  
 
 %type  <str> typename
@@ -144,16 +147,24 @@ statement_seq : 								{ $$ = new TreeNode(NODE_STATEMENT_SEQUENCE); }
  | statement_seq local_variable_definition
  ;
  
+while_statement: KEYWORD_WHILE OP exp CP statement { $$ = (new TreeNode(NODE_WHILE_STATEMENT))->append($3)->append($5); } 
+ ;
+ 
 statement : exp SEMICOLON
  | block
+ | while_statement
+ | if_statement
  | identifier ASSIGN 	  	exp		SEMICOLON	{ $$ = (new TreeNode(NODE_ASSIGN))->append($1)->append($3); } 									
  | identifier ASSIGN_PLUS 	exp		SEMICOLON	
  | identifier ASSIGN_MINUS	exp  	SEMICOLON
  | identifier ASSIGN_MUL	exp		SEMICOLON
  | identifier ASSIGN_DIV 	exp  	SEMICOLON
- | KEYWORD_RETURN exp SEMICOLON					{ $$ = (new TreeNode(NODE_RETURN))->append($2); 			}
- | KEYWORD_PRINTLN OP exp CP		SEMICOLON	{ $$ = (new TreeNode(NODE_PRINTLN))->append($3);			}
+ | KEYWORD_RETURN 			exp 	SEMICOLON	{ $$ = (new TreeNode(NODE_RETURN))->append($2); 			}
+ | KEYWORD_PRINTLN OP 		exp CP	SEMICOLON	{ $$ = (new TreeNode(NODE_PRINTLN))->append($3);			}
  ;
+
+if_statement: KEYWORD_IF OP exp CP statement				{ $$ = (new TreeNode(NODE_IF))->append($3)->append($5);  }
+ |  KEYWORD_IF OP exp CP statement KEYWORD_ELSE statement	{ $$ = (new TreeNode(NODE_IF_ELSE))->append($3)->append($5)->append($7);  }
 
 identifier : IDENTIFIER							
 	{  TreeNode* p_node = new TreeNode(NODE_SYMBOL);

@@ -45,6 +45,8 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_LESS_EQUAL_FLOAT:		return "LESS_EQUAL_FLOAT";
 			case TRIPLE_GREATER_FLOAT:			return "GREATER_FLOAT";
 			case TRIPLE_GREATER_EQUAL_FLOAT:	return "GREATER_EQUAL_FLOAT";
+			case TRIPLE_JZ:						return "JZ";
+			case TRIPLE_JMP:					return "JMP";
 
 			default:
 				throw std::string("tripleOpToString: not implemented yet");

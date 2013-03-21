@@ -11,6 +11,7 @@
 
 namespace Compiler {
 
+static const std::string ST0		= "st0";
 static const std::string EAX 		= "eax";
 static const std::string EBX 		= "ebx";
 static const std::string EDX		= "edx";
@@ -23,9 +24,13 @@ static const std::string CLD		= "cld";
 static const std::string ECX		= "ecx";
 static const std::string REP_MOVSD  = "rep\tmovsd";
 
-TripleTranslator::TripleTranslator() {
+TripleTranslator::TripleTranslator() : labelCount(0) {
+
 }
 
+LabelId TripleTranslator::newLabel() {
+	return labelCount++;
+}
 
 static std::string inst(const std::string& name, const std::string& arg1, const std::string& arg2) {
 	return name + "\t" + arg1 +",\t" + arg2;
@@ -141,6 +146,18 @@ static std::string cmp(const std::string& arg1, const std::string& arg2) {
 
 static std::string fcomip(const std::string& arg1) {
 	return "fcomip\t" + arg1;
+}
+
+static std::string jz(const std::string& arg1) {
+	return "jz\t" + arg1;
+}
+
+static std::string jmp(const std::string& arg1) {
+	return "jmp\t" + arg1;
+}
+
+static std::string ffree(const std::string& arg1) {
+	return "ffree\t" + arg1;
 }
 
 void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream& os,
@@ -276,22 +293,33 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 			append(os, mov(EBX, "-1"));
 			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, cmp(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
-			append(os, inst(cmpInstruction(triple.op), ECX, EBX));
+			append(os, inst(cmpInstruction(triple.op) + '\t', ECX, EBX));
 			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), ECX));
 			break;
 		case TRIPLE_EQUAL_FLOAT:
 		case TRIPLE_NOT_EQUAL_FLOAT:
 		case TRIPLE_GREATER_FLOAT:
-		case TRIPLE_GREATER_EQUAL_FLOAT:
 		case TRIPLE_LESS_FLOAT:
-		case TRIPLE_LESS_EQUAL_FLOAT:
 			append(os, _xor(ECX, ECX));
 			append(os, mov(EBX, "-1"));
 
+			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
 			append(os, fld(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
-			append(os, fcomip(b(CodeGenerator::symbolToAddr(p_table, triple.arg2))));
-			append(os, inst(cmpInstruction(triple.op), ECX, EBX));
+			append(os, inst("fcomip\t", "st0", "st1"));
+			append(os, inst(cmpInstruction(triple.op) + '\t', ECX, EBX));
+			append(os, ffree(ST0));
 			append(os, mov(b(CodeGenerator::symbolToAddr(p_table, triple.result)), ECX));
+			break;
+		case TRIPLE_LABEL:
+			append(os, CodeGenerator::symbolToAddr(p_table, triple.arg1) + ':');
+			break;
+		case TRIPLE_JZ:
+			append(os, mov(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, cmp(EAX, "0"));
+			append(os, jz(CodeGenerator::symbolToAddr(p_table, triple.result)));
+			break;
+		case TRIPLE_JMP:
+			append(os, jmp(CodeGenerator::symbolToAddr(p_table, triple.arg1)));
 			break;
 		default:
 			throw std::string("translate failed: ") + tripleOpToString(triple.op);
@@ -302,28 +330,30 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 std::string TripleTranslator::cmpInstruction(TripleOp op) {
 	switch (op) {
 	case TRIPLE_LESS_INT:
-	case TRIPLE_LESS_FLOAT:
 		return "cmovl";
+	case TRIPLE_LESS_FLOAT:
+		return "cmovc";
 
 	case TRIPLE_LESS_EQUAL_INT:
-	case TRIPLE_LESS_EQUAL_FLOAT:
 		return "cmovle";
 
 	case TRIPLE_GREATER_EQUAL_INT:
-	case TRIPLE_GREATER_EQUAL_FLOAT:
 		return "cmovge";
 
 	case TRIPLE_GREATER_INT:
-	case TRIPLE_GREATER_FLOAT:
 		return "cmovg";
+	case TRIPLE_GREATER_FLOAT:
+		return "cmovnc";
 
 	case TRIPLE_EQUAL_INT:
-	case TRIPLE_EQUAL_FLOAT:
 		return "cmove";
+	case TRIPLE_EQUAL_FLOAT:
+		return "cmovz";
 
 	case TRIPLE_NOT_EQUAL_INT:
-	case TRIPLE_NOT_EQUAL_FLOAT:
 		return "cmovne";
+	case TRIPLE_NOT_EQUAL_FLOAT:
+		return "cmovnz";
 	default:
 		throw std::string("cmpInstruction");
 	}

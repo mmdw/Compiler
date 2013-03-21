@@ -16,6 +16,8 @@
 
 namespace Compiler {
 	using namespace ASTBuilder;
+	typedef int LabelId;
+	const LabelId LABEL_UNDEFINED = -1;
 
 	enum TripleOp {
 		TRIPLE_ADD_FLOAT,
@@ -59,7 +61,11 @@ namespace Compiler {
 		TRIPLE_GREATER_FLOAT,
 		TRIPLE_GREATER_EQUAL_FLOAT,
 		TRIPLE_EQUAL_FLOAT,
-		TRIPLE_NOT_EQUAL_FLOAT
+		TRIPLE_NOT_EQUAL_FLOAT,
+
+		TRIPLE_LABEL,
+		TRIPLE_JZ,
+		TRIPLE_JMP,
 
 	};
 

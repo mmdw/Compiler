@@ -42,13 +42,14 @@ namespace Compiler {
 			case NODE_CONST_FLOAT:			return "NODE_CONST_FLOAT";
 			case NODE_CALL:					return "NODE_CALL";
 
-			case NODE_KEYWORD_IF:			return "NODE_KEYWORD_IF";
+			case NODE_IF:					return "NODE_IF";
 			case NODE_KEYWORD_VOID:			return "NODE_KEYWORD_VOID";
 			case NODE_KEYWORD_INT:			return "NODE_KEYWORD_INT";
 			case NODE_KEYWORD_FLOAT:		return "NODE_KEYWORD_FLOAT";
 			case NODE_KEYWORD_PRINTLN:		return "NODE_KEYWORD_PRINTLN";
 			case NODE_KEYWORD_CHAR:			return "NODE_KEYWORD_CHAR";
 			case NODE_KEYWORD_STRUCT:		return "NODE_KEYWORD_STRUCT";
+			case NODE_WHILE_STATEMENT:		return "NODE_WHILE_STATEMENT";
 
 			case NODE_NOT:					return "NODE_NOT";
 

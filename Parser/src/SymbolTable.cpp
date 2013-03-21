@@ -20,6 +20,7 @@ std::string symbolTypeToString(SymbolType type) {
 		case SYMBOL_INT:   			return "SYMBOL_INT";
 		case SYMBOL_VOID:  			return "SYMBOL_VOID";
 		case SYMBOL_BOOL:			return "SYMBOL_BOOL";
+		case SYMBOL_LABEL:			return "SYMBOL_LABEL";
 		case SYMBOL_DOUBLE_FLOAT:	return "SYMBOL_DOUBLE_FLOAT";
 		default:
 			throw std::string("symbolTypeToString");
@@ -55,7 +56,6 @@ SymbolId SymbolTable::insert(const std::string& value,
 		} else {
 			row.value = value;
 		}
-
 
 		if (allocationType == ALLOCATION_CONST_GLOBAL) {
 			for(TableType::iterator it = table.begin(); it != table.end(); ++it) {
@@ -124,6 +124,17 @@ SymbolId SymbolTable::insertTemp(SymbolType symbolType) {
 	return insert(std::string("__temp_") + oss.str(), symbolType, ALLOCATION_VARIABLE_LOCAL);
 }
 
+SymbolId SymbolTable::insertLabel(const std::string& name) {
+	return insert(name, SYMBOL_LABEL, ALLOCATION_UNDEFINED);
+}
+
+SymbolId SymbolTable::insertNewLabel() {
+	std::ostringstream oss;
+	oss << table.size() + 1;
+
+	return insertLabel(std::string("__label_") + oss.str());
+}
+
 const std::list<SymbolId>& SymbolTable::funcArgList(SymbolId funcId) {
 	assert(find(funcId).symbolType == SYMBOL_FUNC);
 
@@ -141,4 +152,5 @@ int typeSize(SymbolType type) {
 
 }
 }
+
 

@@ -27,11 +27,14 @@ float			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  r
 bool			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_BOOL; }
 true			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
 false			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
+while			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_WHILE; }
 println			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }	
 	
 return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 
 
+if				{ return Compiler::ASTBuilder::Parser::token::KEYWORD_IF; }
+else			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_ELSE; }
 {IDENTIFIER} 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::IDENTIFIER; }
 "+"			 	{ return Compiler::ASTBuilder::Parser::token::ADD; }
 "-"			 	{ return Compiler::ASTBuilder::Parser::token::SUB; }

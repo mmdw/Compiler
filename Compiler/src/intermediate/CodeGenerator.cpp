@@ -74,14 +74,19 @@ std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBui
 
 	const std::string strSymbol = Util::to_string(symbolId);
 
-	if (symbol.symbolType == SYMBOL_FUNC) {
-		return symbol.value;
-	}
-
 	switch (symbol.allocationType) {
 	case ASTBuilder::ALLOCATION_VARIABLE_LOCAL: 	return std::string("__local_") + strSymbol;
 	case ASTBuilder::ALLOCATION_CONST_GLOBAL:		return std::string("__const_") + strSymbol;
 	case ASTBuilder::ALLOCATION_VARIABLE_ARGUMENT:	return std::string("__arg_") + strSymbol;
+	case ASTBuilder::ALLOCATION_UNDEFINED:
+		switch(symbol.symbolType) {
+		case SYMBOL_FUNC:
+			return symbol.value;
+		case SYMBOL_LABEL:
+			return std::string("__label_") + strSymbol;
+		default:
+			break;
+		}
 	default:
 		throw std::string("symbolToAddr");
 	}
@@ -491,6 +496,44 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 				throw ASTBuilder::nodeTypeToString(p_node->nodeType);
 			}
 		}
+		break;
+	}
+	case NODE_WHILE_STATEMENT: {
+		SymbolId cycleStart = p_table->insertNewLabel();
+		SymbolId cycleEnd = p_table->insertNewLabel();
+
+		tripleSequence.push_back(Triple(TRIPLE_LABEL, cycleStart));
+
+		SymbolId expResult = maybeEval(returnType, p_node->at(0), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_JZ, cycleEnd, expResult));
+
+		generateTripleSequence(returnType, p_node->at(1), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_JMP, cycleStart));
+		tripleSequence.push_back(Triple(TRIPLE_LABEL, cycleEnd));
+
+		break;
+	}
+	case NODE_IF: {
+		SymbolId ifEnd = p_table->insertNewLabel();
+		SymbolId expResult = maybeEval(returnType, p_node->at(0), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_JZ, ifEnd, expResult));
+		generateTripleSequence(returnType, p_node->at(1), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_LABEL, ifEnd));
+		break;
+	}
+	case NODE_IF_ELSE: {
+		SymbolId ifElse = p_table->insertNewLabel();
+		SymbolId ifEnd  = p_table->insertNewLabel();
+
+		SymbolId expResult = maybeEval(returnType, p_node->at(0), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_JZ, ifElse, expResult));
+		generateTripleSequence(returnType, p_node->at(1), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_JMP, ifEnd));
+
+		tripleSequence.push_back(Triple(TRIPLE_LABEL, ifElse));
+		generateTripleSequence(returnType, p_node->at(2), tripleSequence);
+		tripleSequence.push_back(Triple(TRIPLE_LABEL, ifEnd));
+
 		break;
 	}
 	default:

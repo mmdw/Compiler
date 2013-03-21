@@ -24,6 +24,7 @@ enum SymbolType {
 	SYMBOL_DOUBLE_FLOAT,
 	SYMBOL_FUNC,
 	SYMBOL_BOOL,
+	SYMBOL_LABEL,
 	SYMBOL_VOID
 };
 
@@ -58,6 +59,8 @@ public:
 	SymbolId					insertFunc(const std::string& name, SymbolType returnType, const std::list<SymbolId>& args);
 	SymbolId					insertTemp(SymbolType type);
 	SymbolId					insertArgRef(SymbolType type);
+	SymbolId					insertLabel(const std::string& name);
+	SymbolId					insertNewLabel();
 
 	TableType::const_iterator 	begin();
 	TableType::const_iterator	end();

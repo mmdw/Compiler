@@ -1,7 +1,9 @@
-bool f(float a, float b) {
-	return a < b;
-}
-
 void main() {
-	println(f(1.0, 2.0));
+	int x;
+	x = 1;
+	if (x < 3) {
+		println(3);
+	}
+	
+	println(99);
 }

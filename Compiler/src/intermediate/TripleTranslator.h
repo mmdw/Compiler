@@ -21,9 +21,12 @@ public:
 	TripleTranslator();
 	void translate(ASTBuilder::SymbolTable* p_table, std::ostream& os, std::list<Triple>& tripleSequence);
 
+	LabelId newLabel();
+
 	virtual ~TripleTranslator();
 
 private:
+	LabelId labelCount;
 	std::string cmpInstruction(TripleOp op);
 };
 
