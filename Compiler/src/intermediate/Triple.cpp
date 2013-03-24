@@ -32,6 +32,12 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_PRINTLN_DOUBLE_FLOAT:	return "PRINTLN_DOUBLE_FLOAT";
 			case TRIPLE_PRINTLN_INT:			return "PRINTLN_INT";
 			case TRIPLE_PRINTLN_BOOL:			return "PRINTLN_BOOL";
+			case TRIPLE_PRINT_DOUBLE_FLOAT:		return "PRINT_DOUBLE_FLOAT";
+			case TRIPLE_PRINT_INT:				return "PRINT_INT";
+			case TRIPLE_PRINT_BOOL:				return "PRINT_BOOL";
+			case TRIPLE_READLN_INT:				return "READLN_INT";
+			case TRIPLE_READLN_FLOAT:			return "READLN_FLOAT";
+			case TRIPLE_READLN_BOOL:			return "READLN_BOOL";
 			case TRIPLE_OR:						return "OR";
 			case TRIPLE_AND:					return "AND";
 			case TRIPLE_NEG_INT:				return "NEG_INT";

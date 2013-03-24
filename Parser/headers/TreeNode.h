@@ -33,6 +33,8 @@ namespace Compiler {
 			NODE_ASSIGN,
 			NODE_RETURN,
 			NODE_PRINTLN,
+			NODE_PRINT,
+			NODE_READLN,
 
 			NODE_IDENTIFIER,
 

@@ -20,6 +20,8 @@ namespace Compiler {
 			case NODE_ASSIGN:				return "NODE_ASSIGN";
 			case NODE_RETURN:				return "NODE_RETURN";
 			case NODE_PRINTLN:				return "NODE_PRINTLN";
+			case NODE_PRINT:				return "NODE_PRINT";
+			case NODE_READLN:				return "NODE_READLN";
 
 			case NODE_IDENTIFIER:			return "NODE_IDENTIFIER";
 

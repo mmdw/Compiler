@@ -24,6 +24,12 @@ static const std::string CLD		= "cld";
 static const std::string ECX		= "ecx";
 static const std::string REP_MOVSD  = "rep\tmovsd";
 
+static const std::string CCALL_SCANF_INT   = "ccall [scanf], __format_int";
+static const std::string CCALL_SCANF_FLOAT = "ccall [scanf], __format_float";
+static const std::string CCALL_GETCHAR 	   = "ccall [getchar]";
+
+static const std::string PRINT_NEWLINE = "ccall\t[printf], __newline";
+
 TripleTranslator::TripleTranslator() : labelCount(0) {
 
 }
@@ -64,12 +70,12 @@ static std::string call(const std::string& arg) {
 	return CALL + '\t' + arg;
 }
 
-static std::string printlnInt(const std::string& arg) {
-	return "ccall\t[printf], __format_println_int, dword " + arg;
+static std::string printInt(const std::string& arg) {
+	return "ccall\t[printf], __format_print_int, dword " + arg;
 }
 
-static std::string printlnDoubleFloat(const std::string& dword1, const std::string& dword2) {
-	return "ccall\t[printf], __format_println_float, dword " + dword1 + ", dword " + dword2;
+static std::string printDoubleFloat(const std::string& dword1, const std::string& dword2) {
+	return "ccall\t[printf], __format_print_float, dword " + dword1 + ", dword " + dword2;
 }
 
 static std::string fild(const std::string& arg) {
@@ -245,19 +251,42 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 		case TRIPLE_CALL_PROCEDURE:
 			append(os, call(CodeGenerator::symbolToAddr(p_table, triple.arg1)));
 			break;
+		case TRIPLE_PRINT_INT:
 		case TRIPLE_PRINTLN_INT:
-			append(os, printlnInt(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, printInt(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			if (triple.op == TRIPLE_PRINTLN_INT) {
+				append(os, PRINT_NEWLINE);
+			}
 			break;
+		case TRIPLE_PRINT_DOUBLE_FLOAT:
 		case TRIPLE_PRINTLN_DOUBLE_FLOAT:
-			append(os, printlnDoubleFloat(
+			append(os, printDoubleFloat(
 					b(CodeGenerator::symbolToAddr(p_table, triple.arg1)),
 					b(CodeGenerator::symbolToAddr(p_table, triple.arg1) + " + 4")
 				));
+			if (triple.op == TRIPLE_PRINTLN_DOUBLE_FLOAT) {
+				append(os, PRINT_NEWLINE);
+			}
 			break;
+		case TRIPLE_PRINT_BOOL:
 		case TRIPLE_PRINTLN_BOOL:
 			append(os, push(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			append(os, call("__print_bool"));
-
+			if (triple.op == TRIPLE_PRINTLN_BOOL) {
+				append(os, PRINT_NEWLINE);
+			}
+			break;
+		case TRIPLE_READLN_FLOAT:
+		case TRIPLE_READLN_INT: {
+			append(os, lea(EAX, b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
+			append(os, push(EAX));
+			if (triple.op == TRIPLE_READLN_INT) {
+				append(os, CCALL_SCANF_INT);
+			} else if (triple.op == TRIPLE_READLN_FLOAT){
+				append(os, CCALL_SCANF_FLOAT);
+			}
+			append(os, CCALL_GETCHAR);
+		}
 			break;
 		case TRIPLE_INT_TO_FLOAT:
 			append(os, fild(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));

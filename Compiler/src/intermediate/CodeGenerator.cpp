@@ -81,8 +81,11 @@ void CodeGenerator::generateConstSection() {
 		}
 	}
 
-	output << "__format_println_int\tdb\t\"%d\",10,0" << std::endl;
-	output << "__format_println_float\tdb\t\"%f\",10,0" << std::endl;
+	output << "__newline\tdb\t10,0" << std::endl;
+	output << "__format_print_int\tdb\t\"%d\",0" << std::endl;
+	output << "__format_print_float\tdb\t\"%f\",0" << std::endl;
+	output << "__format_int\tdb\t\"%d\",0" << std::endl;
+	output << "__format_float\tdb\t\"%f\",0" << std::endl;
 	output << "__str_true\tdb\t\"true\",0" << std::endl;
 	output << "__str_false\tdb\t\"false\",0" << std::endl;
 
@@ -359,6 +362,7 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 
 		break;
 	}
+	case ASTBuilder::NODE_PRINT:
 	case ASTBuilder::NODE_PRINTLN: {
 		ASTBuilder::TreeNode* p_arg = p_node->at(0);
 		SymbolId argAddr = SYMBOL_UNDEFINED;
@@ -376,19 +380,60 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 		switch (type) {
 			case SYMBOL_TYPE_FLOAT: {
 				SymbolId tempDouble = castSymbolToPrimaryType(SYMBOL_TYPE_DOUBLE_FLOAT, argAddr, tripleSequence);
-				tripleSequence.push_back(Triple(TRIPLE_PRINTLN_DOUBLE_FLOAT, tempDouble));
+				tripleSequence.push_back(
+					Triple(p_node->nodeType == NODE_PRINTLN ? TRIPLE_PRINTLN_DOUBLE_FLOAT : TRIPLE_PRINT_DOUBLE_FLOAT, tempDouble)
+				);
 				break;
 			}
 			case SYMBOL_TYPE_INT:
-				tripleSequence.push_back(Triple(TRIPLE_PRINTLN_INT, argAddr));
+				tripleSequence.push_back(
+					Triple(p_node->nodeType == NODE_PRINTLN ? TRIPLE_PRINTLN_INT : TRIPLE_PRINT_INT, argAddr)
+				);
 				break;
 			case SYMBOL_TYPE_BOOL:
-				tripleSequence.push_back(Triple(TRIPLE_PRINTLN_BOOL, argAddr));
+				tripleSequence.push_back(
+					Triple(p_node->nodeType == NODE_PRINTLN ? TRIPLE_PRINTLN_BOOL : TRIPLE_PRINT_BOOL, argAddr)
+				);
 				break;
 			default:
 				throw std::string("NODE_PRINTLN unknown type of the argument");
 		}
 		return;
+	}
+	case NODE_READLN: {
+		ASTBuilder::TreeNode* p_arg = p_node->at(0);
+		SymbolId argAddr = SYMBOL_UNDEFINED;
+
+		if (p_arg->nodeType != ASTBuilder::NODE_SYMBOL ||
+				p_table->find(p_arg->symbolId).allocationType != ALLOCATION_VARIABLE_GLOBAL &&
+				p_table->find(p_arg->symbolId).allocationType != ALLOCATION_VARIABLE_LOCAL) {
+
+			throw std::string("readln: argument is not l-value");
+		}
+
+		argAddr = p_arg->symbolId;
+		SymbolType type = p_table->find(argAddr).type;
+
+		if (type == SYMBOL_TYPE_CUSTOM) {
+			type = p_table->find(p_table->findCustomType(argAddr)).type;
+		}
+
+		switch (type) {
+			case SYMBOL_TYPE_FLOAT:
+				tripleSequence.push_back(Triple(TRIPLE_READLN_FLOAT, argAddr));
+				break;
+			case SYMBOL_TYPE_INT:
+				tripleSequence.push_back(Triple(TRIPLE_READLN_INT, argAddr));
+				break;
+			case SYMBOL_TYPE_BOOL:
+				tripleSequence.push_back(Triple(TRIPLE_READLN_BOOL, argAddr));
+				break;
+			default:
+				throw std::string("NODE_PRINTLN unknown type of the argument");
+		}
+		return;
+
+		break;
 	}
 	case NODE_CALL: {
 		SymbolId funcId = p_node->at(0)->symbolId;
@@ -592,7 +637,7 @@ void CodeGenerator::generateFooter() {
 		"section '.idata' import data readable\n"
 		"library kernel,'kernel32.dll',msvcrt,'msvcrt.dll'\n"
 		"import kernel, ExitProcess,'ExitProcess' \n"
-		"import msvcrt, printf,'printf', getchar, '_fgetchar'\n";
+		"import msvcrt, printf,'printf', getchar, '_fgetchar', scanf, 'scanf'\n";
 }
 
 void CodeGenerator::validate() {
