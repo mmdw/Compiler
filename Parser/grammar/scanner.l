@@ -9,7 +9,7 @@
 %option nodefault yyclass="Scanner" noyywrap c++
 
 IDENTIFIER		[[:alpha:]][[:alnum:]]*
-FLOAT			[[:digit:]]+.[[:digit:]]+
+FLOAT			[[:digit:]]+"."[[:digit:]]+
 INT				[[:digit:]]+
 
 %%
@@ -29,6 +29,7 @@ true			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  re
 false			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
 while			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_WHILE; }
 println			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }	
+typedef			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_TYPEDEF; }
 	
 return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
 

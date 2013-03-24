@@ -25,7 +25,7 @@ int main(int argc, char * argv[]) {
 		delete p_table;
 		delete p_node;
 
-	} catch (std::string error) {
+	} catch (std::string& error) {
 		std::cerr << "ERROR: " << error << std::endl;
 		return 255;
 	}

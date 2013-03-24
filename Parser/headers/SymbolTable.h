@@ -16,54 +16,84 @@
 namespace Compiler {
 namespace ASTBuilder {
 
+
 typedef signed SymbolId;
+typedef signed TypeId;
+
+enum SymbolKind {
+	SYMBOL_FUNC,
+	SYMBOL_VALUE,
+	SYMBOL_LABEL,
+	SYMBOL_TYPEDEF,
+};
 
 enum SymbolType {
-	SYMBOL_INT,
-	SYMBOL_FLOAT,
-	SYMBOL_DOUBLE_FLOAT,
-	SYMBOL_FUNC,
-	SYMBOL_BOOL,
-	SYMBOL_LABEL,
-	SYMBOL_VOID
+	SYMBOL_TYPE_UNDEFINED,
+
+	SYMBOL_TYPE_BOOL,
+	SYMBOL_TYPE_VOID,
+	SYMBOL_TYPE_INT,
+	SYMBOL_TYPE_FLOAT,
+	SYMBOL_TYPE_DOUBLE_FLOAT,
+
+	SYMBOL_TYPE_CUSTOM,
 };
 
 enum AllocationType {
+	ALLOCATION_UNDEFINED,
+
 	ALLOCATION_VARIABLE_GLOBAL,
 	ALLOCATION_VARIABLE_LOCAL,
 	ALLOCATION_CONST_GLOBAL,
-	ALLOCATION_UNDEFINED,
 	ALLOCATION_VARIABLE_ARGUMENT //?
 };
 
+SymbolType	stringToSymbolType		(const std::string& val);
 std::string symbolTypeToString		(SymbolType 	type);
+std::string symbolKindToString		(SymbolKind 	type);
 std::string allocationTypeToString	(AllocationType type);
-int			typeSize				(SymbolType		type);
+int			typeSize				(SymbolKind		type);
 
 struct Symbol {
 	std::string		value;
-	SymbolType 		symbolType;
+	SymbolKind 		kind;
+	SymbolType		type;
 	AllocationType 	allocationType;
 };
 
 class SymbolTable {
-	typedef std::map<SymbolId, Symbol> 						TableType;
+	typedef std::map<SymbolId, Symbol> 						SymbolMap;
 	typedef std::pair<SymbolType, std::list<SymbolId> > 	FuncTableRow;
 	typedef std::map<SymbolId, FuncTableRow>				FuncTableType;
+	typedef std::map<SymbolId, SymbolId>					SymbolTypedefTable;
 
-	TableType 								table;
+	SymbolMap 								table;
 	FuncTableType							funcTable;
+	SymbolTypedefTable						customType;
 
 public:
-	SymbolId 					insert(const std::string& value, SymbolType type, AllocationType allocationType);
-	SymbolId					insertFunc(const std::string& name, SymbolType returnType, const std::list<SymbolId>& args);
-	SymbolId					insertTemp(SymbolType type);
-	SymbolId					insertArgRef(SymbolType type);
-	SymbolId					insertLabel(const std::string& name);
-	SymbolId					insertNewLabel();
+	SymbolId 					insert			(const std::string& 		value,
+									   	   	     SymbolKind 				kind,
+									   	   	     SymbolType 				type,
+									   	   	     AllocationType 			allocationType);
 
-	TableType::const_iterator 	begin();
-	TableType::const_iterator	end();
+	SymbolId					insertFunc		(const std::string& 		name,
+										   	   	 SymbolType 				returnType);
+
+	void						insertFuncArgs	(SymbolId 					funcId,
+									 	 	   	 SymbolType 				returnType,
+									 	 	   	 const std::list<SymbolId>& args);
+
+	SymbolId					insertTemp		(SymbolType 				type);
+	SymbolId					insertLabel		(const std::string& 		name);
+	SymbolId					insertNewLabel	();
+
+	void 						insertCustomTypedSymbol(SymbolId variableId, SymbolId typeId);
+
+	SymbolMap::const_iterator 	begin();
+	SymbolMap::const_iterator	end();
+
+	SymbolId					findCustomType(SymbolId varId);
 	const Symbol& 				find(SymbolId symbolId);
 	SymbolType					funcReturnType(SymbolId funcId);
 	const std::list<SymbolId>&	funcArgList(SymbolId symbolId);

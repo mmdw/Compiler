@@ -8,6 +8,7 @@
 #ifndef SYMBOLRESOLVER_H_
 #define SYMBOLRESOLVER_H_
 
+#include <iostream>
 #include <map>
 #include <string>
 #include <deque>
@@ -28,17 +29,41 @@ public:
 
 	}
 
-	SymbolId insert(const std::string& identifier, SymbolType type, AllocationType allocationType = ALLOCATION_UNDEFINED) {
+	SymbolId findCustomType(const std::string& strType) {
+		for (std::map<ASTBuilder::SymbolId, ASTBuilder::Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
+			if (it->second.kind == SYMBOL_TYPEDEF && it->second.value == strType) {
+				return it->first;
+			}
+		}
+
+		return -1; // FIXME
+	}
+
+	SymbolId insert(const std::string& identifier, SymbolKind kind, SymbolType type, AllocationType allocationType = ALLOCATION_UNDEFINED) {
 		IdentifierTable& table = tableStack.back();
 
 		if (table.find(identifier) != table.end()) {
 			throw std::string("identifier ") + identifier + std::string(" already exists in this scope");
 		}
 
-		SymbolId id = p_table->insert(identifier, type, allocationType);
+		SymbolId id = p_table->insert(identifier, kind, type, allocationType);
 		table.insert(IdentifierTable::value_type(identifier, id));
 
 		return id;
+	}
+
+	SymbolId insertTypename(const std::string& strType, const std::string& strNewType) {
+		SymbolType t = stringToSymbolType(strType);
+		if (t == SYMBOL_TYPE_UNDEFINED) {
+			SymbolId id = findCustomType(strType);
+			if (id != -1) { // FIXME
+				return insert(strNewType, SYMBOL_TYPEDEF, p_table->find(id).type);
+			}
+
+			throw std::string("unknown type:\"") + strType + "\"";
+		}
+
+		return insert(strNewType, SYMBOL_TYPEDEF, stringToSymbolType(strType));
 	}
 
 	SymbolId insertFunction(SymbolType returnType, const std::string& identifier, const std::list<SymbolId>& args) {
@@ -48,42 +73,54 @@ public:
 			throw std::string("identifier ") + identifier + std::string(" already exists in this scope");
 		}
 
-		SymbolId id = p_table->insertFunc(identifier, returnType, args);
+		SymbolId id = p_table->insertFunc(identifier, returnType);
+
+		push(); // FIXME
+
+		p_table->insertFuncArgs(id, returnType, args);
 		table.insert(IdentifierTable::value_type(identifier, id));
 
 		return id;
 	}
 
 	SymbolId insertVariable(const std::string& typeName, const std::string& identifier, AllocationType allocationType) {
-		if (typeName == "int") {
-			return insert(identifier, SYMBOL_INT, allocationType);
-		} else if (typeName == "float") {
-			return insert(identifier, SYMBOL_FLOAT, allocationType);
-		} else if (typeName == "bool") {
-			return insert(identifier, SYMBOL_BOOL, allocationType);
-		} else {
-			throw std::string("unknown type: ") + typeName;
+		SymbolType type = stringToSymbolType(typeName);
+		if (type == SYMBOL_TYPE_UNDEFINED) {
+			SymbolId typeId = findCustomType(typeName);
+
+			if (typeId != -1) { // FIXME
+				type = p_table->find(typeId).type;
+			} else {
+				throw std::string("unknown type: ") + typeName;
+			}
+
+			SymbolId id = insert(identifier, SYMBOL_VALUE, SYMBOL_TYPE_CUSTOM, allocationType);
+			p_table->insertCustomTypedSymbol(id, typeId);
+
+			return id;
 		}
+
+		return insert(identifier, SYMBOL_VALUE, type, allocationType);
 	}
 
 	SymbolId insertFunction(const std::string& returnType, const std::string& identifier, const std::list<SymbolId>& args) {
-		if (returnType == "void") {
-			return insertFunction(SYMBOL_VOID, identifier, args);
+		SymbolType type = stringToSymbolType(returnType);
+		if (type == SYMBOL_TYPE_UNDEFINED) {
+			SymbolId typeId = findCustomType(returnType);
+
+			if (typeId != -1) { // FIXME
+				type = p_table->find(typeId).type;
+			} else {
+				throw std::string("unknown type: ") + returnType;
+			}
+
+			SymbolId id = insertFunction(SYMBOL_TYPE_CUSTOM, identifier, args);
+			p_table->insertCustomTypedSymbol(id, typeId);
+
+			return id;
 		}
 
-		if (returnType == "int") {
-			return insertFunction(SYMBOL_INT, identifier, args);
-		}
-
-		if (returnType == "float") {
-			return insertFunction(SYMBOL_FLOAT, identifier, args);
-		}
-
-		if (returnType == "bool") {
-			return insertFunction(SYMBOL_BOOL, identifier, args);
-		}
-
-		throw std::string("insertFunction: unknown type");
+		return insertFunction(type, identifier, args);
 	}
 
 	SymbolId resolve(const std::string& identifier) {
@@ -98,11 +135,12 @@ public:
 			}
 		}
 
-		throw std::string("SymbolResolver::resolve failed");
+		debug(std::cout);
+		throw std::string("SymbolResolver::resolve failed: ") + identifier;
 	}
 
 	SymbolId insertConst(const std::string& value, SymbolType type) {
-		return p_table->insert(value, type, ALLOCATION_CONST_GLOBAL);
+		return p_table->insert(value, SYMBOL_VALUE, type, ALLOCATION_CONST_GLOBAL);
 	}
 
 	void push() {

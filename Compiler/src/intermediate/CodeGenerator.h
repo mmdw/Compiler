@@ -25,19 +25,24 @@ class CodeGenerator {
 
 	TripleTranslator			tripleTranslator;
 
-	SymbolId castSymbol(SymbolType targetType, SymbolId symbol, TripleSequence& tripleSequence);
+	SymbolId castSymbolToPrimaryType(SymbolType targetType, SymbolId symbol, TripleSequence& tripleSequence);
+	SymbolId castSymbolToSymbol(SymbolId targetId, SymbolId symbol, TripleSequence& tripleSequence);
 
 	void generateHeader();
 	void generateProcedures();
 	void generateConstSection();
 	void generateFooter();
+	void generateGlobalVariableSection();
+	void generateInitializationGlobalsCode();
 
 	void validate();
 
-	void generateTripleSequence(ASTBuilder::SymbolType returnType, ASTBuilder::TreeNode* p_node, TripleSequence& tripleSequence);
+	void generateTripleSequence(SymbolId targetFuncId, ASTBuilder::TreeNode* p_node, TripleSequence& tripleSequence);
 	void generateLocalVariables(TripleSequence& tripleSequence);
 
-	SymbolId maybeEval(ASTBuilder::SymbolType returnType, TreeNode* p_node, TripleSequence& tripleSequence);
+	SymbolId maybeEval(SymbolId targetSymbolId, TreeNode* p_node, TripleSequence& tripleSequence);
+	SymbolType maybeUpcastFormCustomType(SymbolId id);
+
 public:
 	static std::string symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBuilder::SymbolId symbolId);
 

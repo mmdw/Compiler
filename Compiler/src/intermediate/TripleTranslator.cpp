@@ -65,11 +65,11 @@ static std::string call(const std::string& arg) {
 }
 
 static std::string printlnInt(const std::string& arg) {
-	return "ccall\t[printf], __format_int, dword " + arg;
+	return "ccall\t[printf], __format_println_int, dword " + arg;
 }
 
 static std::string printlnDoubleFloat(const std::string& dword1, const std::string& dword2) {
-	return "ccall\t[printf], __format_float, dword " + dword1 + ", dword " + dword2;
+	return "ccall\t[printf], __format_println_float, dword " + dword1 + ", dword " + dword2;
 }
 
 static std::string fild(const std::string& arg) {
@@ -240,6 +240,9 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, std::ostream&
 			append(os, push(b(CodeGenerator::symbolToAddr(p_table, triple.arg1))));
 			break;
 		case TRIPLE_CALL_FUNCTION:
+			append(os, call(CodeGenerator::symbolToAddr(p_table, triple.arg1)));
+			break;
+		case TRIPLE_CALL_PROCEDURE:
 			append(os, call(CodeGenerator::symbolToAddr(p_table, triple.arg1)));
 			break;
 		case TRIPLE_PRINTLN_INT:

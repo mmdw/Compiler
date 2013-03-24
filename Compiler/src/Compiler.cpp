@@ -16,13 +16,11 @@
 #include "SymbolTable.h"
 
 using namespace std;
-
 void testParser() {
 	Compiler::TreeBuilder iniFile;
 	std::ifstream is ("C:/Users/user/git/Compiler/Compiler/res/test.txt");
 
 	try {
-		;
 		Compiler::ASTBuilder::TreeNode* 	p_node;
 		Compiler::ASTBuilder::SymbolTable*	p_table;
 

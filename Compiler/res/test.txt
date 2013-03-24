@@ -1,9 +1,4 @@
 void main() {
-	int x;
-	x = 1;
-	if (x < 3) {
-		println(3);
-	}
-	
-	println(99);
+	bool x = true || false;
+	println(x);
 }

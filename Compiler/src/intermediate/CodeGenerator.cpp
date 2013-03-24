@@ -23,6 +23,7 @@ CodeGenerator::CodeGenerator(ASTBuilder::TreeNode* p_root,
 	generateHeader();
 	generateProcedures();
 	generateConstSection();
+	generateGlobalVariableSection();
 	generateFooter();
 }
 
@@ -33,9 +34,11 @@ void CodeGenerator::generateHeader() {
 		"include 'win32a.inc'\n"
 		"section '.code' code readable executable\n\n"
 		"start: \n"
-		"\tcall main\n"
+		"\tcall __init\n"
 		"\tccall [getchar]\n"
 		"\tstdcall [ExitProcess], 0\n\n";
+
+	generateInitializationGlobalsCode();
 
 	output <<
 		"proc __print_bool _arg\n"
@@ -47,7 +50,26 @@ void CodeGenerator::generateHeader() {
 		"	 ccall [printf], __str_false\n\n"
 		"	 ret\n"
 		"endp\n\n";
+}
 
+void CodeGenerator::generateInitializationGlobalsCode() {
+	output << "proc __init\n";
+	for (std::list<ASTBuilder::TreeNode*>::iterator it = p_root->childs.begin(); it != p_root->childs.end(); ++it) {
+		if ((*it)->nodeType != NODE_ASSIGN) {
+			continue;
+		}
+
+		TreeNode* p_node = (*it);
+
+		TripleSequence ts;
+		generateTripleSequence(SYMBOL_UNDEFINED, p_node, ts);
+		generateLocalVariables(ts);
+		tripleTranslator.translate(p_table, output, ts);
+	}
+
+	output << "\tcall main\n";
+	output << "ret\n";
+	output << "endp\n\n";
 }
 
 void CodeGenerator::generateConstSection() {
@@ -59,10 +81,26 @@ void CodeGenerator::generateConstSection() {
 		}
 	}
 
-	output << "__format_int\tdb\t\"%d\",0" << std::endl;
-	output << "__format_float\tdb\t\"%f\",0" << std::endl;
+	output << "__format_println_int\tdb\t\"%d\",10,0" << std::endl;
+	output << "__format_println_float\tdb\t\"%f\",10,0" << std::endl;
 	output << "__str_true\tdb\t\"true\",0" << std::endl;
 	output << "__str_false\tdb\t\"false\",0" << std::endl;
+
+	output << std::endl;
+}
+
+void CodeGenerator::generateGlobalVariableSection() {
+	bool firstLine = true;
+
+	for (std::map<ASTBuilder::SymbolId, ASTBuilder::Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
+		if (it->second.allocationType == ASTBuilder::ALLOCATION_VARIABLE_GLOBAL) {
+			if (firstLine) {
+				output << "section '.data' readable writable\n";
+				firstLine = false;
+			}
+			output << symbolToAddr(p_table, it->first) << '\t' << "dd\t0"  << std::endl;
+		}
+	}
 
 	output << std::endl;
 }
@@ -77,9 +115,10 @@ std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBui
 	switch (symbol.allocationType) {
 	case ASTBuilder::ALLOCATION_VARIABLE_LOCAL: 	return std::string("__local_") + strSymbol;
 	case ASTBuilder::ALLOCATION_CONST_GLOBAL:		return std::string("__const_") + strSymbol;
+	case ASTBuilder::ALLOCATION_VARIABLE_GLOBAL:	return std::string("__global_") + strSymbol;
 	case ASTBuilder::ALLOCATION_VARIABLE_ARGUMENT:	return std::string("__arg_") + strSymbol;
 	case ASTBuilder::ALLOCATION_UNDEFINED:
-		switch(symbol.symbolType) {
+		switch(symbol.kind) {
 		case SYMBOL_FUNC:
 			return symbol.value;
 		case SYMBOL_LABEL:
@@ -87,6 +126,7 @@ std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBui
 		default:
 			break;
 		}
+		break;
 	default:
 		throw std::string("symbolToAddr");
 	}
@@ -94,12 +134,17 @@ std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBui
 
 void CodeGenerator::generateProcedures() {
 	for (std::list<ASTBuilder::TreeNode*>::iterator it = p_root->childs.begin(); it != p_root->childs.end(); ++it) {
-		const ASTBuilder::SymbolId id = (*it)->symbolId;
-		const ASTBuilder::Symbol& symbol = p_table->find(id);
-		ASTBuilder::SymbolType returnType = p_table->funcReturnType(id);
-		const std::list<SymbolId>& args = p_table->funcArgList(id);
+		if ((*it)->nodeType != NODE_FUNCTION_DEFINITION) {
+			continue;
+		}
 
-		if (symbol.symbolType != ASTBuilder::SYMBOL_FUNC) {
+		const ASTBuilder::SymbolId targetFuncId = (*it)->symbolId;
+		const ASTBuilder::Symbol& symbol = p_table->find(targetFuncId);
+
+		ASTBuilder::SymbolType returnType = p_table->funcReturnType(targetFuncId);
+		const std::list<SymbolId>& args = p_table->funcArgList(targetFuncId);
+
+		if (symbol.kind != ASTBuilder::SYMBOL_FUNC) {
 			continue;
 		}
 
@@ -114,15 +159,15 @@ void CodeGenerator::generateProcedures() {
 			}
 		}
 
-		if (returnType != SYMBOL_VOID) {
+		if (returnType != SYMBOL_TYPE_VOID) {
 			output << (!args.empty() ? ", " : "") << "__ret_ref";
 		}
 
 		output << std::endl;
 
 		TripleSequence tripleSequence;
-		generateTripleSequence(returnType, (*it)->at(0), tripleSequence);
-		if (returnType == SYMBOL_VOID) {
+		generateTripleSequence(targetFuncId, (*it)->at(0), tripleSequence);
+		if (returnType == SYMBOL_TYPE_VOID) {
 			if (tripleSequence.empty() || tripleSequence.back().op != TRIPLE_RETURN_PROCEDURE) {
 				tripleSequence.push_back(Triple(TRIPLE_RETURN_PROCEDURE));
 			}
@@ -161,24 +206,24 @@ void CodeGenerator::generateLocalVariables(TripleSequence& tripleSequence) {
 	}
 
 	for (std::set<SymbolId>::iterator it = locals.begin(); it != locals.end(); ++it) {
-		std::string size(p_table->find(*it).symbolType == SYMBOL_DOUBLE_FLOAT ? ":QWORD" : ":DWORD");
+		std::string size(p_table->find(*it).type == SYMBOL_TYPE_DOUBLE_FLOAT ? ":QWORD" : ":DWORD");
 
 		output << '\t' << "local\t" << symbolToAddr(p_table, *it) << size << std::endl;
 	}
 }
 
-void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, ASTBuilder::TreeNode* p_node,
+void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::TreeNode* p_node,
 		std::list<Triple>& tripleSequence) {
 
 	switch (p_node->nodeType) {
 	case ASTBuilder::NODE_STATEMENT_BLOCK:
 	case ASTBuilder::NODE_STATEMENT_SEQUENCE:
 		for (std::list<ASTBuilder::TreeNode*>::iterator it = p_node->childs.begin(); it != p_node->childs.end(); ++it) {
-			generateTripleSequence(returnType, *it, tripleSequence);
+			generateTripleSequence(targetFuncId, *it, tripleSequence);
 		}
 		break;
 	case ASTBuilder::NODE_RETURN: {
-			if (returnType == SYMBOL_VOID) {
+			if (p_table->funcReturnType(targetFuncId) == SYMBOL_TYPE_VOID) {
 				if (!p_node->childs.empty()) {
 					throw std::string("procedure cannot return value");
 				}
@@ -192,10 +237,10 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 
 				SymbolId rightAddr;
 				if (p_right->nodeType != NODE_SYMBOL) {
-					generateTripleSequence(returnType, p_right, tripleSequence);
-					rightAddr = castSymbol(returnType, tripleSequence.back().result, tripleSequence);
+					generateTripleSequence(targetFuncId, p_right, tripleSequence);
+					rightAddr = castSymbolToSymbol(targetFuncId, tripleSequence.back().result, tripleSequence);
 				} else {
-					rightAddr = castSymbol(returnType, p_right->symbolId, tripleSequence);
+					rightAddr = castSymbolToSymbol(targetFuncId, p_right->symbolId, tripleSequence);
 				}
 
 				tripleSequence.push_back(Triple(TRIPLE_RETURN_FUNCTION, rightAddr));
@@ -206,7 +251,6 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 			ASTBuilder::TreeNode* p_right = p_node->at(1);
 
 			SymbolId leftAddr = p_node->at(0)->symbolId;
-			SymbolType leftType = p_table->find(leftAddr).symbolType;
 
 			if (p_node->at(0)->nodeType != NODE_SYMBOL || p_table->find(leftAddr).allocationType == ALLOCATION_CONST_GLOBAL) {
 				throw std::string("left part is not l-value");
@@ -215,10 +259,10 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 			SymbolId rightAddr = SYMBOL_UNDEFINED;
 
 			if (p_right->nodeType != NODE_SYMBOL) {
-				generateTripleSequence(returnType, p_right, tripleSequence);
-				rightAddr = castSymbol(leftType, tripleSequence.back().result, tripleSequence);
+				generateTripleSequence(targetFuncId, p_right, tripleSequence);
+				rightAddr = castSymbolToSymbol(leftAddr, tripleSequence.back().result, tripleSequence);
 			} else {
-				rightAddr = castSymbol(leftType, p_node->at(1)->symbolId, tripleSequence);
+				rightAddr = castSymbolToSymbol(leftAddr, p_node->at(1)->symbolId, tripleSequence);
 			}
 
 			tripleSequence.push_back(Triple(TRIPLE_COPY, leftAddr, rightAddr));
@@ -232,18 +276,18 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 			ASTBuilder::TreeNode* p_right = p_node->at(1);
 			ASTBuilder::TreeNode* p_left = p_node->at(0);
 
-			SymbolId rightAddr = maybeEval(returnType, p_right, tripleSequence);
-			SymbolId leftAddr = maybeEval(returnType, p_left, tripleSequence);
+			SymbolId rightAddr = maybeEval(targetFuncId, p_right, tripleSequence);
+			SymbolId leftAddr = maybeEval(targetFuncId, p_left, tripleSequence);
 
-			const SymbolType leftType = p_table->find(leftAddr).symbolType;
-			const SymbolType rightType = p_table->find(rightAddr).symbolType;
+			const SymbolType leftType = maybeUpcastFormCustomType(leftAddr);
+			const SymbolType rightType = maybeUpcastFormCustomType(rightAddr);
 
 			SymbolId result = SYMBOL_UNDEFINED;
-			if (leftType == SYMBOL_FLOAT || rightType == SYMBOL_FLOAT) {
-				result = p_table->insertTemp(ASTBuilder::SYMBOL_FLOAT);
+			if (leftType == SYMBOL_TYPE_FLOAT || rightType == SYMBOL_TYPE_FLOAT) {
+				result = p_table->insertTemp(ASTBuilder::SYMBOL_TYPE_FLOAT);
 
-				leftAddr = castSymbol(SYMBOL_FLOAT, leftAddr, tripleSequence);
-				rightAddr = castSymbol(SYMBOL_FLOAT, rightAddr, tripleSequence);
+				leftAddr = castSymbolToSymbol(result, leftAddr, tripleSequence);
+				rightAddr = castSymbolToSymbol(result, rightAddr, tripleSequence);
 
 				switch (p_node->nodeType) {
 				case NODE_ADD:
@@ -262,7 +306,7 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 					throw ASTBuilder::nodeTypeToString(p_node->nodeType);
 				}
 			} else {
-				result = p_table->insertTemp(ASTBuilder::SYMBOL_INT);
+				result = p_table->insertTemp(ASTBuilder::SYMBOL_TYPE_INT);
 				switch (p_node->nodeType) {
 				case NODE_ADD:
 					tripleSequence.push_back(Triple(TRIPLE_ADD_INT, result, leftAddr, rightAddr));
@@ -287,18 +331,18 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 		ASTBuilder::TreeNode* p_right = p_node->at(1);
 		ASTBuilder::TreeNode* p_left = p_node->at(0);
 
-		SymbolId right = maybeEval(returnType, p_right, tripleSequence);
-		SymbolId left  = maybeEval(returnType, p_left, tripleSequence);
-		SymbolId result = p_table->insertTemp(SYMBOL_BOOL);
+		SymbolId right = maybeEval(targetFuncId, p_right, tripleSequence);
+		SymbolId left  = maybeEval(targetFuncId, p_left, tripleSequence);
+		SymbolId result = p_table->insertTemp(SYMBOL_TYPE_BOOL);
 
-		const SymbolType leftType = p_table->find(left).symbolType;
-		const SymbolType rightType = p_table->find(right).symbolType;
+		const SymbolType leftType = p_table->find(left).type;
+		const SymbolType rightType = p_table->find(right).type;
 
-		if (leftType != SYMBOL_BOOL) {
+		if (leftType != SYMBOL_TYPE_BOOL) {
 			throw std::string("left part of ") + nodeTypeToString(p_node->nodeType) + " must be BOOL expression";
 		}
 
-		if (rightType != SYMBOL_BOOL) {
+		if (rightType != SYMBOL_TYPE_BOOL) {
 			throw std::string("right part of ") + nodeTypeToString(p_node->nodeType) + " must be BOOL expression";
 		}
 
@@ -319,23 +363,26 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 		ASTBuilder::TreeNode* p_arg = p_node->at(0);
 		SymbolId argAddr = SYMBOL_UNDEFINED;
 		if (p_arg->nodeType != ASTBuilder::NODE_SYMBOL) {
-			generateTripleSequence(returnType, p_arg, tripleSequence);
+			generateTripleSequence(targetFuncId, p_arg, tripleSequence);
 			argAddr = tripleSequence.back().result;
 		} else {
 			argAddr = p_arg->symbolId;
 		}
 
-		const SymbolType type = p_table->find(argAddr).symbolType;
+		SymbolType type = p_table->find(argAddr).type;
+		if (type == SYMBOL_TYPE_CUSTOM) {
+			type = p_table->find(p_table->findCustomType(argAddr)).type;
+		}
 		switch (type) {
-			case SYMBOL_FLOAT: {
-				SymbolId tempDouble = castSymbol(SYMBOL_DOUBLE_FLOAT, argAddr, tripleSequence);
+			case SYMBOL_TYPE_FLOAT: {
+				SymbolId tempDouble = castSymbolToPrimaryType(SYMBOL_TYPE_DOUBLE_FLOAT, argAddr, tripleSequence);
 				tripleSequence.push_back(Triple(TRIPLE_PRINTLN_DOUBLE_FLOAT, tempDouble));
 				break;
 			}
-			case SYMBOL_INT:
+			case SYMBOL_TYPE_INT:
 				tripleSequence.push_back(Triple(TRIPLE_PRINTLN_INT, argAddr));
 				break;
-			case SYMBOL_BOOL:
+			case SYMBOL_TYPE_BOOL:
 				tripleSequence.push_back(Triple(TRIPLE_PRINTLN_BOOL, argAddr));
 				break;
 			default:
@@ -352,34 +399,33 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 		if (p_node->at(1)->childs.size() != funcArgs.size()) {
 			throw std::string("wrong call func \"") + p_table->find(funcId).value + "\": different number of arguments";
 		}
-
 		SymbolId retReference = SYMBOL_UNDEFINED;
-		if (retType != SYMBOL_VOID) {
-			retReference = p_table->insertTemp(retType);
+		if (retType != SYMBOL_TYPE_VOID) {
+			retReference = p_table->insertTemp(maybeUpcastFormCustomType(funcId));
 			tripleSequence.push_back(Triple(TRIPLE_PUSH_PTR, retReference));
 		}
 
 		int i = p_node->at(1)->childs.size() - 1;
 		for (std::list<SymbolId>::const_reverse_iterator it = funcArgs.rbegin(); it != funcArgs.rend(); ++it, --i) {
-			SymbolType targetType = p_table->find(*it).symbolType;
+			SymbolType targetType = p_table->find(*it).type;
 			TreeNode* p_param = p_node->at(1)->at(i);
 
 			SymbolId paramId = SYMBOL_UNDEFINED;
 			if (p_param->nodeType != NODE_SYMBOL) {
-				generateTripleSequence(returnType, p_param, tripleSequence);
-				paramId = castSymbol(targetType, tripleSequence.back().result, tripleSequence);
+				generateTripleSequence(targetFuncId, p_param, tripleSequence);
+				paramId = castSymbolToPrimaryType(targetType, tripleSequence.back().result, tripleSequence);
 			} else {
-				paramId = castSymbol(targetType, p_param->symbolId, tripleSequence);
+				paramId = castSymbolToPrimaryType(targetType, p_param->symbolId, tripleSequence);
 			}
 
 			switch (targetType) {
-			case SYMBOL_FLOAT:
+			case SYMBOL_TYPE_FLOAT:
 				tripleSequence.push_back(Triple(TRIPLE_PUSH_FLOAT, paramId));
 				break;
-			case SYMBOL_INT:
+			case SYMBOL_TYPE_INT:
 				tripleSequence.push_back(Triple(TRIPLE_PUSH_INT, paramId));
 				break;
-			case SYMBOL_BOOL:
+			case SYMBOL_TYPE_BOOL:
 				tripleSequence.push_back(Triple(TRIPLE_PUSH_BOOL, paramId));
 				break;
 			default:
@@ -387,7 +433,7 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 			}
 		}
 
-		if (retType != SYMBOL_VOID) {
+		if (retType != SYMBOL_TYPE_VOID) {
 			tripleSequence.push_back(Triple(TRIPLE_CALL_FUNCTION, retReference, funcId));
 		} else {
 			tripleSequence.push_back(Triple(TRIPLE_CALL_PROCEDURE, funcId));
@@ -397,18 +443,18 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 
 	case NODE_UMINUS: {
 		TreeNode* p_arg = p_node->at(0);
-		SymbolId arg = maybeEval(returnType, p_arg, tripleSequence);
-		const SymbolType argType = p_table->find(arg).symbolType;
-		SymbolId res = p_table->insertTemp(argType);
+		SymbolId arg = maybeEval(targetFuncId, p_arg, tripleSequence);
+		const SymbolType argType = p_table->find(arg).type;
+		SymbolId res = p_table->insertTemp(maybeUpcastFormCustomType(arg));
 
 		switch (argType) {
-		case SYMBOL_INT:
+		case SYMBOL_TYPE_INT:
 			tripleSequence.push_back(Triple(TRIPLE_NEG_INT, res, arg));
 			break;
-		case SYMBOL_FLOAT:
+		case SYMBOL_TYPE_FLOAT:
 			tripleSequence.push_back(Triple(TRIPLE_NEG_FLOAT, res, arg));
 			break;
-		case SYMBOL_BOOL:
+		case SYMBOL_TYPE_BOOL:
 			throw std::string("minus sign before BOOL value");
 			break;
 		default:
@@ -418,11 +464,11 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 	}
 	case NODE_NOT: {
 		TreeNode* p_arg = p_node->at(0);
-		SymbolId argId = maybeEval(returnType, p_arg, tripleSequence);
-		SymbolId result = p_table->insertTemp(SYMBOL_BOOL);
+		SymbolId argId = maybeEval(targetFuncId, p_arg, tripleSequence);
+		SymbolId result = p_table->insertTemp(SYMBOL_TYPE_BOOL);
 
-		SymbolType argType = p_table->find(argId).symbolType;
-		if (argType != SYMBOL_BOOL) {
+		SymbolType argType = p_table->find(argId).type;
+		if (argType != SYMBOL_TYPE_BOOL) {
 			throw std::string("value must be boolean");
 		}
 
@@ -439,16 +485,16 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 		ASTBuilder::TreeNode* p_right = p_node->at(1);
 		ASTBuilder::TreeNode* p_left = p_node->at(0);
 
-		SymbolId rightAddr = maybeEval(returnType, p_right, tripleSequence);
-		SymbolId leftAddr = maybeEval(returnType, p_left, tripleSequence);
+		SymbolId rightAddr = maybeEval(targetFuncId, p_right, tripleSequence);
+		SymbolId leftAddr = maybeEval(targetFuncId, p_left, tripleSequence);
 
-		const SymbolType leftType = p_table->find(leftAddr).symbolType;
-		const SymbolType rightType = p_table->find(rightAddr).symbolType;
+		const SymbolType leftType = p_table->find(leftAddr).type;
+		const SymbolType rightType = p_table->find(rightAddr).type;
 
-		SymbolId result = p_table->insertTemp(SYMBOL_BOOL);
-		if (leftType == SYMBOL_FLOAT || rightType == SYMBOL_FLOAT) {
-			leftAddr = castSymbol(SYMBOL_FLOAT, leftAddr, tripleSequence);
-			rightAddr = castSymbol(SYMBOL_FLOAT, rightAddr, tripleSequence);
+		SymbolId result = p_table->insertTemp(SYMBOL_TYPE_BOOL);
+		if (leftType == SYMBOL_TYPE_FLOAT || rightType == SYMBOL_TYPE_FLOAT) {
+			leftAddr = castSymbolToPrimaryType(SYMBOL_TYPE_FLOAT, leftAddr, tripleSequence);
+			rightAddr = castSymbolToPrimaryType(SYMBOL_TYPE_FLOAT, rightAddr, tripleSequence);
 
 			switch (p_node->nodeType) {
 			case NODE_LESS:
@@ -504,10 +550,10 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 
 		tripleSequence.push_back(Triple(TRIPLE_LABEL, cycleStart));
 
-		SymbolId expResult = maybeEval(returnType, p_node->at(0), tripleSequence);
+		SymbolId expResult = maybeEval(targetFuncId, p_node->at(0), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_JZ, cycleEnd, expResult));
 
-		generateTripleSequence(returnType, p_node->at(1), tripleSequence);
+		generateTripleSequence(targetFuncId, p_node->at(1), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_JMP, cycleStart));
 		tripleSequence.push_back(Triple(TRIPLE_LABEL, cycleEnd));
 
@@ -515,9 +561,9 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 	}
 	case NODE_IF: {
 		SymbolId ifEnd = p_table->insertNewLabel();
-		SymbolId expResult = maybeEval(returnType, p_node->at(0), tripleSequence);
+		SymbolId expResult = maybeEval(targetFuncId, p_node->at(0), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_JZ, ifEnd, expResult));
-		generateTripleSequence(returnType, p_node->at(1), tripleSequence);
+		generateTripleSequence(targetFuncId, p_node->at(1), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_LABEL, ifEnd));
 		break;
 	}
@@ -525,13 +571,13 @@ void CodeGenerator::generateTripleSequence(ASTBuilder::SymbolType returnType, AS
 		SymbolId ifElse = p_table->insertNewLabel();
 		SymbolId ifEnd  = p_table->insertNewLabel();
 
-		SymbolId expResult = maybeEval(returnType, p_node->at(0), tripleSequence);
+		SymbolId expResult = maybeEval(targetFuncId, p_node->at(0), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_JZ, ifElse, expResult));
-		generateTripleSequence(returnType, p_node->at(1), tripleSequence);
+		generateTripleSequence(targetFuncId, p_node->at(1), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_JMP, ifEnd));
 
 		tripleSequence.push_back(Triple(TRIPLE_LABEL, ifElse));
-		generateTripleSequence(returnType, p_node->at(2), tripleSequence);
+		generateTripleSequence(targetFuncId, p_node->at(2), tripleSequence);
 		tripleSequence.push_back(Triple(TRIPLE_LABEL, ifEnd));
 
 		break;
@@ -551,7 +597,7 @@ void CodeGenerator::generateFooter() {
 
 void CodeGenerator::validate() {
 	for (std::map<SymbolId, Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
-		if (it->second.symbolType == SYMBOL_FUNC && it->second.value == "main") {
+		if (it->second.kind == SYMBOL_FUNC && it->second.value == "main") {
 			return;
 		}
 	}
@@ -559,45 +605,87 @@ void CodeGenerator::validate() {
 	throw std::string("main() undefined");
 }
 
-SymbolId CodeGenerator::castSymbol(SymbolType targetType, SymbolId id, TripleSequence& tripleSequence) {
+SymbolType CodeGenerator::maybeUpcastFormCustomType(SymbolId id) {
+	const Symbol& symbol = p_table->find(id);
+	SymbolType type = symbol.type;
+
+	if (type == SYMBOL_TYPE_CUSTOM) {
+		type = p_table->find(p_table->findCustomType(id)).type;
+	}
+	return type;
+}
+
+SymbolId CodeGenerator::castSymbolToPrimaryType(SymbolType targetType, SymbolId id, TripleSequence& tripleSequence) {
 	assert(id != SYMBOL_UNDEFINED);
 
 	const Symbol& symbol = p_table->find(id);
 
-	if (targetType == symbol.symbolType) {
+	if (targetType == symbol.type) {
 		return id;
 	}
 
-	if (targetType == SYMBOL_FLOAT) {
-		if (symbol.symbolType == SYMBOL_INT) {
+	if (targetType == SYMBOL_TYPE_FLOAT) {
+		SymbolType type = maybeUpcastFormCustomType(id);
+		if (type == SYMBOL_TYPE_INT) {
 			SymbolId tempFloat = p_table->insertTemp(targetType);
 			tripleSequence.push_back(Triple(TRIPLE_INT_TO_FLOAT, tempFloat, id));
 			return tempFloat;
 		}
 	}
 
-	if (targetType == SYMBOL_DOUBLE_FLOAT) {
-		if (symbol.symbolType == SYMBOL_INT) {
+	if (targetType == SYMBOL_TYPE_DOUBLE_FLOAT) {
+		SymbolType type = maybeUpcastFormCustomType(id);
+		if (type == SYMBOL_TYPE_INT) {
 			SymbolId tempDouble = p_table->insertTemp(targetType);
 			tripleSequence.push_back(Triple(TRIPLE_INT_TO_DOUBLE_FLOAT, tempDouble, id));
 			return tempDouble;
 		}
 
-		if (symbol.symbolType == SYMBOL_FLOAT) {
+		if (type == SYMBOL_TYPE_FLOAT) {
 			SymbolId tempDouble = p_table->insertTemp(targetType);
 			tripleSequence.push_back(Triple(TRIPLE_FLOAT_TO_DOUBLE_FLOAT, tempDouble, id));
 			return tempDouble;
 		}
 	}
 
-	throw std::string("cant convert from ") + symbolTypeToString(targetType) + " to " + symbolTypeToString(symbol.symbolType);
+
+	throw std::string("cant convert from ") + symbolTypeToString(symbol.type) + " to " + symbolTypeToString(targetType);
 }
 
-SymbolId CodeGenerator::maybeEval(ASTBuilder::SymbolType returnType,
+SymbolId CodeGenerator::castSymbolToSymbol(SymbolId targetId,
+		SymbolId symbolId, TripleSequence& tripleSequence) {
+
+	const Symbol& targetSymbol = p_table->find(targetId);
+	const Symbol& symbol 	   = p_table->find(symbolId);
+
+	if (symbol.type == SYMBOL_TYPE_CUSTOM && targetSymbol.type == SYMBOL_TYPE_CUSTOM) {
+		if (p_table->findCustomType(targetId) != p_table->findCustomType(symbolId)) {
+			throw std::string("different types");
+		}
+
+		return symbolId;
+	}
+
+	if (symbol.type == SYMBOL_TYPE_CUSTOM && targetSymbol.type != SYMBOL_TYPE_CUSTOM) {
+		if (maybeUpcastFormCustomType(symbolId) == targetSymbol.type) {
+			return symbolId;
+		}
+
+		throw std::string("cannot cast");
+	}
+
+	if (symbol.type != SYMBOL_TYPE_CUSTOM && targetSymbol.type == SYMBOL_TYPE_CUSTOM) {
+		return castSymbolToPrimaryType(p_table->find(p_table->findCustomType(targetId)).type, symbolId, tripleSequence);
+	}
+
+	return castSymbolToPrimaryType(targetSymbol.type, symbolId, tripleSequence);
+}
+
+SymbolId CodeGenerator::maybeEval(SymbolId targetFuncId,
 		TreeNode* p_node, TripleSequence& tripleSequence) {
 
 	if (p_node->nodeType != ASTBuilder::NODE_SYMBOL) {
-		generateTripleSequence(returnType, p_node, tripleSequence);
+		generateTripleSequence(targetFuncId, p_node, tripleSequence);
 		return tripleSequence.back().result;
 	}
 

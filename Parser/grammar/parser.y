@@ -51,11 +51,15 @@
 %type <val> definition_seq
 
 %type <val> local_variable_definition
+%type <val> local_variable_definition_with_init
 %type <val> global_variable_definition
+%type <val> global_variable_definition_with_init
 
 %type <val> marker_block_start marker_block_end
 
 %type <val> func_decl
+%type <val> func_def
+%type <val> type_def
 %type <val> block
 %type <val> func_arg_definition
 %type <val> arg_definition
@@ -73,7 +77,7 @@
 %type <val> if_statement
 
 
-%token <tptr> ADD NOT SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN KEYWORD_IF KEYWORD_ELSE KEYWORD_WHILE ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN
+%token <tptr> ADD NOT SUB MUL DIV OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN KEYWORD_IF KEYWORD_ELSE KEYWORD_WHILE ASSIGN_PLUS ASSIGN_MINUS ASSIGN_MUL ASSIGN_DIV KEYWORD_PRINTLN KEYWORD_TYPEDEF
 %token <val>  KEYWORD_RETURN  
 
 %type  <str> typename
@@ -81,21 +85,37 @@
 
 %%
 
-program : definition_seq						{ *pp_root = $1; }
+program : definition_seq									{ *pp_root = $1; }
  ;
 
-definition_seq : 								{ $$ = new TreeNode(NODE_DEFINITION_SEQUENCE); }
- | definition_seq global_variable_definition	{  }
- | definition_seq func_decl						{ $$ = $1->append($2); }
+definition_seq : 											{ $$ = new TreeNode(NODE_DEFINITION_SEQUENCE); }
+ | definition_seq func_def									{ $$ = $1->append($2); }
+ | definition_seq global_variable_definition				{  }
+ | definition_seq global_variable_definition_with_init		{ $$ = $1->append($2); }
+ | definition_seq type_def									{  }
  ;
 
-global_variable_definition : typename IDENTIFIER SEMICOLON	
-	{ p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_GLOBAL);  }
+global_variable_definition : typename IDENTIFIER SEMICOLON	{ p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_GLOBAL);  }
+ ;
+ 
+global_variable_definition_with_init : typename IDENTIFIER ASSIGN exp SEMICOLON
+	{ TreeNode* p_identifier = new TreeNode(NODE_SYMBOL);
+	  p_identifier->symbolId = p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_GLOBAL); 
+	  $$ = (new TreeNode(NODE_ASSIGN))->append(p_identifier)->append($4); }
  ;
  
 local_variable_definition : typename IDENTIFIER SEMICOLON	
-	{ p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_LOCAL);  }
+	{ p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_LOCAL); }
  ;
+ 
+local_variable_definition_with_init : typename IDENTIFIER ASSIGN exp SEMICOLON
+	{ TreeNode* p_identifier = new TreeNode(NODE_SYMBOL);
+	  p_identifier->symbolId = p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_LOCAL);
+	  $$ = (new TreeNode(NODE_ASSIGN))->append(p_identifier)->append($4); }
+ ;
+
+type_def: KEYWORD_TYPEDEF typename IDENTIFIER SEMICOLON
+	{ p_resolver->insertTypename(*$2, *$3); }
 
 typename : KEYWORD_CHAR 										
  | KEYWORD_INT
@@ -105,17 +125,21 @@ typename : KEYWORD_CHAR
  | KEYWORD_VOID									
  ;
  
-func_decl : typename IDENTIFIER OP marker_block_start func_arg_definition CP block marker_block_end 
+func_def : func_decl block marker_block_end 	{ $$->append($2); }
+ ;
+ 
+func_decl : typename IDENTIFIER OP func_arg_definition CP
 	{ 
 	  std::list<SymbolId> args;
-	  TreeNode* p_args = $5;
+	  TreeNode* p_args = $4;
 	  for (std::list<TreeNode*>::const_iterator it = p_args->childs.begin(); it != p_args->childs.end(); ++it) {
 	  	args.push_back((*it)->symbolId);
 	  }
 	  
-	  TreeNode* p_node = (new TreeNode(NODE_FUNCTION_DEFINITION))->append($7);
-	  p_node->symbolId = p_resolver->insertFunction(*$1, *$2, args);   
-	  $$ =  p_node; }
+	  TreeNode* p_node = new TreeNode(NODE_FUNCTION_DEFINITION);
+	  p_node->symbolId = p_resolver->insertFunction(*$1, *$2, args); 
+	  $$ =  p_node; 
+	 }
  ;
 
 func_arg_definition : 							{ $$ = new TreeNode(NODE_FUNCTION_ARGUMENTS); }
@@ -126,10 +150,9 @@ arg_definition_seq : arg_definition				{ $$ = (new TreeNode(NODE_FUNCTION_ARGUME
  | arg_definition_seq COMMA  arg_definition		{ $$ = $1->append($3); }
  
 
-arg_definition : typename IDENTIFIER			
-	{ TreeNode* p_node = new TreeNode(NODE_SYMBOL);
-	  p_node->symbolId = p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_ARGUMENT);
-	  $$ =  p_node; }
+arg_definition : typename IDENTIFIER			{ TreeNode* p_node = new TreeNode(NODE_SYMBOL);
+												  p_node->symbolId = p_resolver->insertVariable(*$1, *$2, ALLOCATION_VARIABLE_ARGUMENT);
+												  $$ =  p_node; }
  ;
  
 block : OB marker_block_start statement_seq marker_block_end CB
@@ -142,11 +165,12 @@ marker_block_start:								{ p_resolver->push(); }
 marker_block_end:								{ p_resolver->pop(); }
  
  
-statement_seq : 								{ $$ = new TreeNode(NODE_STATEMENT_SEQUENCE); }
- | statement_seq statement						{ $$ = $1->append($2); }
+statement_seq : 										{ $$ = new TreeNode(NODE_STATEMENT_SEQUENCE); }
+ | statement_seq statement								{ $$ = $1->append($2); }
  | statement_seq local_variable_definition
+ | statement_seq local_variable_definition_with_init	{ $$ = $1->append($2); }
  ;
- 
+
 while_statement: KEYWORD_WHILE OP exp CP statement { $$ = (new TreeNode(NODE_WHILE_STATEMENT))->append($3)->append($5); } 
  ;
  
@@ -208,15 +232,15 @@ factor: term
  ;
 
 term: INT_NUMBER								{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
-												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_INT);
+												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_TYPE_INT);
 												  $$ = p_node; }
 												  
  | FLOAT_NUMBER									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
-												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_FLOAT);
+												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_TYPE_FLOAT);
 												  $$ = p_node; } 
 												  
  | BOOL_VALUE									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
-												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_BOOL);
+												  p_node->symbolId = p_resolver->insertConst(*$1, SYMBOL_TYPE_BOOL);
 												  $$ = p_node; } 
  
  | identifier									{ }

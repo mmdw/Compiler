@@ -32,7 +32,7 @@ namespace Compiler {
 			case NODE_GREATER:				return "NODE_GREATER";
 			case NODE_GREATER_EQUAL:		return "NODE_GREATER_EQUAL";
 
-			case NODE_ADD:					return "NODE_A";
+			case NODE_ADD:					return "NODE_ADD";
 			case NODE_SUB:					return "NODE_SUB";
 			case NODE_MUL:					return "NODE_MUL";
 			case NODE_DIV:					return "NODE_DIV";
@@ -43,6 +43,7 @@ namespace Compiler {
 			case NODE_CALL:					return "NODE_CALL";
 
 			case NODE_IF:					return "NODE_IF";
+			case NODE_IF_ELSE:				return "NODE_IF_ELSE";
 			case NODE_KEYWORD_VOID:			return "NODE_KEYWORD_VOID";
 			case NODE_KEYWORD_INT:			return "NODE_KEYWORD_INT";
 			case NODE_KEYWORD_FLOAT:		return "NODE_KEYWORD_FLOAT";

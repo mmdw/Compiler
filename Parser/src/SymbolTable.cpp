@@ -13,18 +13,49 @@
 namespace Compiler {
 namespace ASTBuilder {
 
+std::string symbolKindToString(SymbolKind type) {
+	switch (type) {
+		case SYMBOL_FUNC:  			return "SYMBOL_FUNC";
+		case SYMBOL_VALUE:			return "SYMBOL_VALUE";
+		case SYMBOL_LABEL:			return "SYMBOL_LABEL";
+		case SYMBOL_TYPEDEF:		return "SYMBOL_TYPEDEF";
+		default:
+			throw std::string("symbolKindToString");
+	}
+}
+
 std::string symbolTypeToString(SymbolType type) {
 	switch (type) {
-		case SYMBOL_FLOAT: 			return "SYMBOL_FLOAT";
-		case SYMBOL_FUNC:  			return "SYMBOL_FUNC";
-		case SYMBOL_INT:   			return "SYMBOL_INT";
-		case SYMBOL_VOID:  			return "SYMBOL_VOID";
-		case SYMBOL_BOOL:			return "SYMBOL_BOOL";
-		case SYMBOL_LABEL:			return "SYMBOL_LABEL";
-		case SYMBOL_DOUBLE_FLOAT:	return "SYMBOL_DOUBLE_FLOAT";
-		default:
-			throw std::string("symbolTypeToString");
+	case SYMBOL_TYPE_UNDEFINED:		return "TYPE_UNDEFINED";
+	case SYMBOL_TYPE_BOOL:			return "TYPE_BOOL";
+	case SYMBOL_TYPE_VOID:			return "TYPE_VOID";
+	case SYMBOL_TYPE_INT:			return "TYPE_INT";
+	case SYMBOL_TYPE_FLOAT:			return "TYPE_FLOAT";
+	case SYMBOL_TYPE_DOUBLE_FLOAT:	return "TYPE_DOUBLE_FLOAT";
+	case SYMBOL_TYPE_CUSTOM:		return "TYPE_CUSTOM";
+	default:
+		throw std::string("symbolTypeToString");
 	}
+}
+
+SymbolType stringToSymbolType(const std::string& val) {
+	if (val == "void") {
+		return SYMBOL_TYPE_VOID;
+	}
+
+	if (val == "int") {
+		return SYMBOL_TYPE_INT;
+	}
+
+	if (val == "float") {
+		return SYMBOL_TYPE_FLOAT;
+	}
+
+	if (val == "bool") {
+		return SYMBOL_TYPE_BOOL;
+	}
+
+	return SYMBOL_TYPE_UNDEFINED;
 }
 
 std::string allocationTypeToString(AllocationType type) {
@@ -40,12 +71,12 @@ std::string allocationTypeToString(AllocationType type) {
 }
 
 SymbolId SymbolTable::insert(const std::string& value,
-		SymbolType type, AllocationType allocationType) {
+		SymbolKind kind, SymbolType type, AllocationType allocationType) {
 
-		assert(type != SYMBOL_FUNC);
+		assert(kind != SYMBOL_FUNC);
 
 		Symbol row;
-		if (type == SYMBOL_BOOL && allocationType == ALLOCATION_CONST_GLOBAL) {
+		if (type == SYMBOL_TYPE_BOOL && allocationType == ALLOCATION_CONST_GLOBAL) {
 			if (value == "true") {
 				row.value = "-1";
 			} else if (value == "false") {
@@ -58,7 +89,7 @@ SymbolId SymbolTable::insert(const std::string& value,
 		}
 
 		if (allocationType == ALLOCATION_CONST_GLOBAL) {
-			for(TableType::iterator it = table.begin(); it != table.end(); ++it) {
+			for(SymbolMap::iterator it = table.begin(); it != table.end(); ++it) {
 				if (row.value == it->second.value) {
 					return it->first;
 				}
@@ -67,7 +98,8 @@ SymbolId SymbolTable::insert(const std::string& value,
 
 		SymbolId id = table.size();
 
-		row.symbolType = type;
+		row.kind = kind;
+		row.type = type;
 		row.allocationType = allocationType;
 
 		table.insert(std::pair<SymbolId, Symbol>(table.size(), row));
@@ -77,9 +109,9 @@ SymbolId SymbolTable::insert(const std::string& value,
 
 void SymbolTable::debug(std::ostream& os) {
 	os << "-= SYMBOL TABLE =-" << std::endl;
-	for(TableType::iterator it = table.begin(); it != table.end(); ++it) {
-		os << it->first << '\t' << symbolTypeToString(it->second.symbolType) << '\t'
-		   << allocationTypeToString(it->second.allocationType) << '\t' << it->second.value << std::endl;
+	for(SymbolMap::iterator it = table.begin(); it != table.end(); ++it) {
+		os << it->first << '\t' << symbolKindToString(it->second.kind) << '\t'
+		   << symbolTypeToString(it->second.type) << '\t' << allocationTypeToString(it->second.allocationType) << '\t' << it->second.value << std::endl;
 	}
 }
 
@@ -96,36 +128,48 @@ const Symbol& SymbolTable::find(SymbolId symbolId) {
 }
 
 SymbolType SymbolTable::funcReturnType(SymbolId funcId) {
-	assert(find(funcId).symbolType == SYMBOL_FUNC);
+	assert(find(funcId).kind == SYMBOL_FUNC);
 
 	return funcTable.at(funcId).first;
 
 }
 
-SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType, const std::list<SymbolId>& args) {
+void SymbolTable::insertCustomTypedSymbol(SymbolId variableId,
+		SymbolId typeId) {
+
+	customType.insert(std::pair<SymbolId, SymbolId>(variableId, typeId));
+}
+
+SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType) {
 	SymbolId id = table.size();
 	Symbol row;
 
 	row.allocationType = ALLOCATION_UNDEFINED;
-	row.symbolType = SYMBOL_FUNC;
+	row.kind = SYMBOL_FUNC;
+	row.type = returnType;
 	row.value = name;
 
 	table.insert(std::pair<SymbolId, Symbol>(table.size(), row));
-	funcTable.insert(FuncTableType::value_type(id,
-			std::pair<SymbolType, std::list<SymbolId> > (returnType, args)));
 
 	return id;
 }
 
+void SymbolTable::insertFuncArgs(SymbolId funcId, SymbolType returnType, const std::list<SymbolId>& args) {
+	funcTable.insert(FuncTableType::value_type(funcId,
+			std::pair<SymbolType, std::list<SymbolId> > (returnType, args)));
+}
+
 SymbolId SymbolTable::insertTemp(SymbolType symbolType) {
+	assert(symbolType != SYMBOL_TYPE_CUSTOM);
+
 	std::ostringstream oss;
 	oss << table.size() + 1;
 
-	return insert(std::string("__temp_") + oss.str(), symbolType, ALLOCATION_VARIABLE_LOCAL);
+	return insert(std::string("__temp_") + oss.str(), SYMBOL_VALUE, symbolType, ALLOCATION_VARIABLE_LOCAL);
 }
 
 SymbolId SymbolTable::insertLabel(const std::string& name) {
-	return insert(name, SYMBOL_LABEL, ALLOCATION_UNDEFINED);
+	return insert(name, SYMBOL_LABEL, SYMBOL_TYPE_UNDEFINED, ALLOCATION_UNDEFINED);
 }
 
 SymbolId SymbolTable::insertNewLabel() {
@@ -136,21 +180,15 @@ SymbolId SymbolTable::insertNewLabel() {
 }
 
 const std::list<SymbolId>& SymbolTable::funcArgList(SymbolId funcId) {
-	assert(find(funcId).symbolType == SYMBOL_FUNC);
+	assert(find(funcId).kind == SYMBOL_FUNC);
 
 	return funcTable.at(funcId).second;
 }
 
-int typeSize(SymbolType type) {
-	switch (type) {
-	case SYMBOL_INT	 :	return 4;
-	case SYMBOL_FLOAT:	return 4;
-	default:
-		throw std::string("typeSize");
-	}
+SymbolId SymbolTable::findCustomType(SymbolId varId) {
+	return customType.at(varId);
 }
 
 }
 }
-
 
