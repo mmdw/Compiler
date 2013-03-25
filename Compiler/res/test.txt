@@ -1,5 +1,14 @@
+
+float foo(int a) {
+	return a * a;
+}
+
 void main() {
-	float x = 0;
-	readln(x);
-	println(x);
+	int x = 10;
+	{
+		int x = 100; 
+		{
+			println(x);
+		}
+	}
 }

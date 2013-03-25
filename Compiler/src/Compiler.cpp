@@ -23,15 +23,17 @@ void testParser() {
 	try {
 		Compiler::ASTBuilder::TreeNode* 	p_node;
 		Compiler::ASTBuilder::SymbolTable*	p_table;
+		Compiler::ASTBuilder::TypeTable*	p_type;
 
-		iniFile.parseStream(&p_node, &p_table, is);
+		iniFile.parseStream(&p_node, &p_table, &p_type, is);
 
 		Compiler::ASTBuilder::TreeNode::printTree(std::cout, p_node, 0);
 		std::cout << "\n-------------------------------------------\n";
-		p_table->debug(std::cout);
+		p_table->debug(std::cout, p_type);
+		p_type->debug();
 
 		std::cout << "\n-------------------------------------------\n";
-		Compiler::CodeGenerator cg(p_node, p_table);
+		Compiler::CodeGenerator cg(p_node, p_table, p_type);
 
 		delete p_table;
 		delete p_node;

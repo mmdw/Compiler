@@ -3,11 +3,14 @@ CFLAGS = -Wall -g -IC:\Program\ Files\ (x86)\FlexBison
 BIN    = Parser.exe
 LIB	   = libParser.a
 
-$(LIB) : parser.o scanner.o TreeBuilder.o TreeNode.o  StringHolder.o  SymbolTable.o 
-	ar -r libParser.a parser.o scanner.o TreeBuilder.o TreeNode.o StringHolder.o  SymbolTable.o 
+$(LIB) : parser.o scanner.o TreeBuilder.o TreeNode.o  StringHolder.o  TypeTable.o SymbolTable.o 
+	ar -r libParser.a parser.o scanner.o TreeBuilder.o TypeTable.o TreeNode.o StringHolder.o  SymbolTable.o 
 
-$(BIN) : parser.o scanner.o main.cpp TreeNode.o StringHolder.o TreeBuilder.o TreeNode.o 
-	$(CC) $(CFLAGS) main.cpp SymbolTable.o StringHolder.o TreeBuilder.o TreeNode.o scanner.o parser.o -o $(BIN)
+$(BIN) : parser.o scanner.o main.cpp TreeNode.o StringHolder.o TypeTable.o  SymbolTable.o TreeBuilder.o TreeNode.o 
+	$(CC) $(CFLAGS) main.cpp SymbolTable.o StringHolder.o TypeTable.o TreeBuilder.o TreeNode.o scanner.o parser.o -o $(BIN)
+
+TypeTable.o : src/TypeTable.cpp
+	$(CC) $(CFLAGS) -c -o TypeTable.o src/TypeTable.cpp
 
 SymbolTable.o : src/SymbolTable.cpp
 	$(CC) $(CFLAGS) -c -o SymbolTable.o src/SymbolTable.cpp
@@ -33,7 +36,7 @@ scanner.o : grammar/parser.y grammar/scanner.l
 clean :
 	rm -rf parser.tab.c parser.tab.h location.hh position.hh stack.hh
 	rm -rf lex.yy.cc
-	rm -rf $(BIN) *.o
+	rm -rf $(LIB) *.o
 	rm -rf *.a
 	
 all: $(LIB)

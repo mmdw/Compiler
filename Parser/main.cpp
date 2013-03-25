@@ -18,8 +18,12 @@ int main(int argc, char * argv[]) {
 
 		Compiler::ASTBuilder::TreeNode* 	p_node;
 		Compiler::ASTBuilder::SymbolTable*	p_table;
-		iniFile.parseStream(&p_node, &p_table, is);
+		Compiler::ASTBuilder::TypeTable*	p_type;
 
+		iniFile.parseStream(&p_node, &p_table, &p_type, is);
+
+		p_type->debug();
+		p_table->debug(std::cout, p_type);
 		Compiler::ASTBuilder::TreeNode::printTree(std::cout, p_node, 0);
 
 		delete p_table;

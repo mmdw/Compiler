@@ -44,6 +44,8 @@ namespace Compiler {
 			case NODE_CONST_FLOAT:			return "NODE_CONST_FLOAT";
 			case NODE_CALL:					return "NODE_CALL";
 
+			case NODE_CAST:					return "NODE_CAST";
+
 			case NODE_IF:					return "NODE_IF";
 			case NODE_IF_ELSE:				return "NODE_IF_ELSE";
 			case NODE_KEYWORD_VOID:			return "NODE_KEYWORD_VOID";
@@ -120,6 +122,18 @@ namespace Compiler {
 		 		}
 
 		 		return *it;
+		 }
+
+		 void TreeNode::setTypeId(unsigned typeId) {
+			 assert(nodeType == NODE_CAST);
+
+			 TreeNode::typeId = typeId;
+		 }
+
+		 unsigned TreeNode::getTypeId() {
+			 assert(nodeType == NODE_CAST);
+
+			 return typeId;
 		 }
 	}
 }

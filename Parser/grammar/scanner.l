@@ -19,6 +19,7 @@ INT				[[:digit:]]+
 %}
 
 
+cast			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CAST; }
 char			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CHAR; }
 void 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_VOID; }
 int 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }

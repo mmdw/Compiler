@@ -30,6 +30,8 @@ namespace Compiler {
 			NODE_STATEMENT_BLOCK,
 			NODE_STATEMENT,
 
+			NODE_CAST,
+
 			NODE_ASSIGN,
 			NODE_RETURN,
 			NODE_PRINTLN,
@@ -83,7 +85,12 @@ namespace Compiler {
 			TreeNode* append(TreeNode* p_node);
 			TreeNode* at(unsigned n);
 
+			void 		setTypeId(unsigned Typeid);
+			unsigned 	getTypeId();
+
 			static void printTree(std::ostream& os, TreeNode* root, int tabs);
+			private:
+				unsigned typeId;
 		};
 
 		std::string nodeTypeToString(TreeNodeType type);

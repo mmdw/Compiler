@@ -10,6 +10,6 @@ namespace Compiler {
 	class TreeBuilder {
 		public:
 			void parseStream(ASTBuilder::TreeNode** pp_node, ASTBuilder::SymbolTable** pp_table,
-					std::istream &iniStream);
+					ASTBuilder::TypeTable** pp_type, std::istream &iniStream);
 	};
 }

@@ -10,14 +10,16 @@
 
 namespace Compiler {
 
-	void TreeBuilder::parseStream(ASTBuilder::TreeNode** pp_node, ASTBuilder::SymbolTable** pp_table,
+	void TreeBuilder::parseStream(ASTBuilder::TreeNode** pp_node,
+			ASTBuilder::SymbolTable** pp_table, ASTBuilder::TypeTable** pp_type,
 			std::istream &iniStream) {
 
 		ASTBuilder::Scanner scanner(&iniStream);
 
 		*pp_table = new ASTBuilder::SymbolTable;
+		*pp_type = new ASTBuilder::TypeTable();
 
-		ASTBuilder::SymbolResolver resolver(*pp_table);
+		ASTBuilder::SymbolResolver resolver(*pp_table, *pp_type);
 
 		ASTBuilder::Parser parser(scanner, pp_node, &resolver);
 
