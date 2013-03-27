@@ -1,14 +1,13 @@
+int x = 10;
 
-float foo(int a) {
-	return a * a;
+int foo(int x, int y) {
+	return x + y * y;
 }
 
 void main() {
-	int x = 10;
+	pqueue<bool> q;
+	int y = 20;	
 	{
-		int x = 100; 
-		{
-			println(x);
-		}
+		float y = 30;
 	}
 }

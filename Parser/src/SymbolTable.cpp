@@ -61,7 +61,6 @@ SymbolId SymbolTable::insert(const std::string& value, TypeId typeId, Allocation
 
 		SymbolId id = table.size();
 
-//		row.kind = kind;
 		row.value = value;
 		row.typeId = typeId;
 
@@ -75,12 +74,13 @@ SymbolId SymbolTable::insert(const std::string& value, TypeId typeId, Allocation
 void SymbolTable::debug(std::ostream& os, TypeTable* p_type) {
 	os << "-= SYMBOL TABLE =-" << std::endl;
 	for(SymbolMap::iterator it = table.begin(); it != table.end(); ++it) {
+		TypeId typeId = it->second.typeId;
+		Compiler::ASTBuilder::TypeRow typeRow = p_type->get(typeId);
+
 		os << it->first << '\t'
-		   << p_type->get(it->second.typeId).getName() << '\t'
+		   << (typeRow.getKind() != TYPE_KIND_PQUEUE ? typeRow.getName() : "PQUEUE") << '\t'
 		   << it->second.value << '\t'
 		   << allocationTypeToString(it->second.allocationType) << std::endl;
-//		os << it->first << '\t' << symbolKindToString(it->second.kind) << '\t'
-//		   << symbolTypeToString(it->second.type) << '\t' << allocationTypeToString(it->second.allocationType) << '\t' << it->second.value << std::endl;
 	}
 }
 
@@ -99,38 +99,6 @@ const Symbol& SymbolTable::find(SymbolId symbolId) {
 	return table.at(symbolId);
 }
 
-//SymbolType SymbolTable::funcReturnType(SymbolId funcId) {
-//	assert(find(funcId).kind == SYMBOL_FUNC);
-//
-//	return funcTable.at(funcId).first;
-//
-//}
-
-//void SymbolTable::insertCustomTypedSymbol(SymbolId variableId,
-//		SymbolId typeId) {
-//
-//	customType.insert(std::pair<SymbolId, SymbolId>(variableId, typeId));
-//}
-
-//SymbolId SymbolTable::insertFunc(const std::string& name, SymbolType returnType) {
-//	SymbolId id = table.size();
-//	Symbol row(FUNCTION);
-//
-//	row.allocationType = ALLOCATION_UNDEFINED;
-//	row.kind = SYMBOL_FUNC;
-//	row.type = returnType;
-//	row.value = name;
-//
-//	table.insert(std::pair<SymbolId, Symbol>(table.size(), row));
-//
-//	return id;
-//}
-
-//void SymbolTable::insertFuncArgs(SymbolId funcId, SymbolType returnType, const std::list<SymbolId>& args) {
-//	funcTable.insert(FuncTableType::value_type(funcId,
-//			std::pair<SymbolType, std::list<SymbolId> > (returnType, args)));
-//}
-
 SymbolId SymbolTable::insertTemp(TypeId typeId) {
 	std::ostringstream oss;
 	oss << table.size() + 1;
@@ -148,16 +116,6 @@ SymbolId SymbolTable::insertNewLabel(TypeId typeId) {
 
 	return insertLabel(std::string("__label_") + oss.str(), typeId);
 }
-
-//const std::list<SymbolId>& SymbolTable::funcArgList(SymbolId funcId) {
-//	assert(find(funcId).kind == SYMBOL_FUNC);
-//
-//	return funcTable.at(funcId).second;
-//}
-
-//SymbolId SymbolTable::findCustomType(SymbolId varId) {
-//	return customType.at(varId);
-//}
 
 }
 }

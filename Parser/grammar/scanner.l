@@ -19,6 +19,7 @@ INT				[[:digit:]]+
 %}
 
 
+pqueue			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PQUEUE; }
 cast			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CAST; }
 char			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CHAR; }
 void 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_VOID; }
@@ -50,6 +51,12 @@ else			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_ELSE; }
 "{"				{ return Compiler::ASTBuilder::Parser::token::OB; }
 "}"				{ return Compiler::ASTBuilder::Parser::token::CB; }
 "!"			 	{ return Compiler::ASTBuilder::Parser::token::NOT; }
+"."				{ return Compiler::ASTBuilder::Parser::token::DOT; }
+".push"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_PUSH; }
+".pop"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_POP; }
+".top"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_TOP; }
+".topPriority"	{ return Compiler::ASTBuilder::Parser::token::PQUEUE_TOP_PRIORITY; }
+".size"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_SIZE; }
 ,				{ return Compiler::ASTBuilder::Parser::token::COMMA; }
 ==				{ return Compiler::ASTBuilder::Parser::token::EQUAL; }
 !=				{ return Compiler::ASTBuilder::Parser::token::NOT_EQUAL; }
@@ -60,10 +67,7 @@ else			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_ELSE; }
 "<="			{ return Compiler::ASTBuilder::Parser::token::LESS_EQUAL; }
 ">="			{ return Compiler::ASTBuilder::Parser::token::GREATER_EQUAL; }
 "="				{ return Compiler::ASTBuilder::Parser::token::ASSIGN; }
-"+="			{ return Compiler::ASTBuilder::Parser::token::ASSIGN_PLUS; }
-"-="			{ return Compiler::ASTBuilder::Parser::token::ASSIGN_MINUS; }
-"/="			{ return Compiler::ASTBuilder::Parser::token::ASSIGN_DIV; }
-"*="			{ return Compiler::ASTBuilder::Parser::token::ASSIGN_MUL; }
+
 
 {INT}		 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::INT_NUMBER; }
 {FLOAT}			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::FLOAT_NUMBER; }

@@ -31,12 +31,14 @@ namespace ASTBuilder {
 	public:
 		TypeRow(TypeKind kind);
 
+		TypeId				getItemType() const;
 		TypeId 				getReturnType() const;
 		TypeId				getDefinedType() const;
 		std::string 		getName() const;
 		std::list<SymbolId> getArguments() const;
 		TypeKind			getKind() const;
 
+		void 				setItemType(TypeId ref);
 		void 				setReturnType(TypeId ref);
 		void				setDefinedType(TypeId Ref);
 		void 				setName(const std::string& name);
@@ -63,9 +65,10 @@ namespace ASTBuilder {
 		const TypeId BASIC_VOID;
 
 		TypeTable();
-		TypeRow get(TypeId id);
+		TypeRow& get(TypeId id);
 
 		TypeId findDefinedType(std::string identifier);
+		TypeId pqueueType(TypeId refType);
 		TypeId insertTypedef(TypeId refType, const std::string& identifier);
 		TypeId insertFunction(TypeId returnType, const std::string& identifier);
 		TypeId getReferencedType(TypeId typeId);

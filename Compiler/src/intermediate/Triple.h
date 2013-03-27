@@ -75,6 +75,12 @@ namespace Compiler {
 		TRIPLE_JZ,
 		TRIPLE_JMP,
 
+		TRIPLE_PQUEUE_INIT,
+		TRIPLE_PQUEUE_PUSH,
+		TRIPLE_PQUEUE_POP,
+		TRIPLE_PQUEUE_SIZE,
+		TRIPLE_PQUEUE_TOP,
+		TRIPLE_PQUEUE_TOP_PRIORITY,
 	};
 
 	std::string tripleOpToString(TripleOp op);

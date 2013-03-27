@@ -15,10 +15,11 @@
 #include "SymbolTable.h"
 
 namespace Compiler {
+class CodeGenerator;
 
 class TripleTranslator {
 public:
-	TripleTranslator();
+	TripleTranslator(const CodeGenerator& cg);
 	void translate(ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os, std::list<Triple>& tripleSequence);
 
 	LabelId newLabel();
@@ -26,6 +27,7 @@ public:
 	virtual ~TripleTranslator();
 
 private:
+	const CodeGenerator& cg;
 	LabelId labelCount;
 	std::string cmpInstruction(TripleOp op);
 };

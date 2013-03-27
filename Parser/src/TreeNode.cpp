@@ -56,6 +56,12 @@ namespace Compiler {
 			case NODE_KEYWORD_STRUCT:		return "NODE_KEYWORD_STRUCT";
 			case NODE_WHILE_STATEMENT:		return "NODE_WHILE_STATEMENT";
 
+			case NODE_PQUEUE_PUSH:			return "NODE_PQUEUE_PUSH";
+			case NODE_PQUEUE_POP:			return "NODE_PQUEUE_POP";
+			case NODE_PQUEUE_SIZE:			return "NODE_PQUEUE_SIZE";
+			case NODE_PQUEUE_TOP:			return "NODE_PQUEUE_TOP";
+			case NODE_PQUEUE_TOP_PRIORITY:	return "NODE_PQUEUE_TOP_PRIORITY";
+
 			case NODE_NOT:					return "NODE_NOT";
 
 			case NODE_UNDEFINED:			return "NODE_UNDEFINED";

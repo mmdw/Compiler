@@ -66,9 +66,26 @@ void TypeRow::setArguments(const std::list<SymbolId>& arguments) {
 	if (kind != TYPE_KIND_FUNCTION) {
 		throw std::string("TypeTable::TypeRow::setArguments");
 	}
-
 	TypeRow::arguments = arguments;
 }
+
+TypeId Compiler::ASTBuilder::TypeRow::getItemType() const {
+	if (kind != TYPE_KIND_PQUEUE) {
+		throw std::string("TypeTable::TypeRow::getItemType");
+	}
+
+	return ref;
+}
+
+
+void Compiler::ASTBuilder::TypeRow::setItemType(TypeId ref) {
+	if (kind != TYPE_KIND_PQUEUE) {
+		throw std::string("setItemType");
+	}
+
+	TypeRow::ref = ref;
+}
+
 
 TypeTable::TypeTable()  :
 	rows(std::map<TypeId, TypeRow>()),
@@ -80,7 +97,7 @@ TypeTable::TypeTable()  :
 	BASIC_DOUBLE_FLOAT(addBasic("double")),
 	BASIC_VOID(addBasic("void")) { }
 
-TypeRow TypeTable::get(TypeId id) {
+TypeRow& TypeTable::get(TypeId id) {
 	return rows.at(id);
 }
 
@@ -112,7 +129,6 @@ TypeId TypeTable::insertFunction(TypeId returnType,	const std::string& identifie
 
 	row.setName(identifier);
 	row.setReturnType(returnType);
-//	row.setArguments(arg);
 
 	rows.insert(std::pair<TypeId, TypeRow>(id, row));
 	return id;
@@ -121,8 +137,10 @@ TypeId TypeTable::insertFunction(TypeId returnType,	const std::string& identifie
 void TypeTable::debug() {
 	std::cout << "-= TypeTable =-\n";
 	for (std::map<TypeId, TypeRow>::const_iterator it = rows.begin(); it != rows.end(); ++it) {
-		std::cout << it->first << '\t' << typeKindToString(it->second.getKind()) << '\t'
-				<< (it->second.getKind() != TYPE_KIND_LABEL ? it->second.getName() : "") << std::endl;
+		std::cout
+			<< it->first << '\t'
+			<< typeKindToString(it->second.getKind()) << '\t'
+			<< (it->second.getKind() != TYPE_KIND_LABEL && it->second.getKind() != TYPE_KIND_PQUEUE ? it->second.getName() : "") << std::endl;
 	}
 }
 
@@ -174,6 +192,21 @@ TypeId TypeTable::getReferencedType(TypeId typeId) {
 }
 
 
-}
+TypeId TypeTable::pqueueType(TypeId refType) {
+	for (std::map<TypeId, TypeRow>::const_iterator it = rows.begin(); it != rows.end(); ++it) {
+		if (it->second.getKind() == TYPE_KIND_PQUEUE && it->second.getItemType() == refType) {
+			return it->first;
+		}
+	}
+
+	TypeId id = typeCount++;
+
+	TypeRow row(TYPE_KIND_PQUEUE);
+	row.setItemType(refType);
+	rows.insert(std::pair<TypeId, TypeRow>(id, row));
+
+	return id;
 }
 
+}
+}

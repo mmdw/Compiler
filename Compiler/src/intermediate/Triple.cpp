@@ -53,6 +53,13 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_GREATER_EQUAL_FLOAT:	return "GREATER_EQUAL_FLOAT";
 			case TRIPLE_JZ:						return "JZ";
 			case TRIPLE_JMP:					return "JMP";
+			case TRIPLE_LABEL:					return "LABEL";
+			case TRIPLE_PQUEUE_INIT:			return "TRIPLE_PQUEUE_INIT";
+			case TRIPLE_PQUEUE_PUSH:			return "TRIPLE_PQUEUE_PUSH";
+			case TRIPLE_PQUEUE_POP:				return "TRIPLE_PQUEUE_POP";
+			case TRIPLE_PQUEUE_SIZE:			return "TRIPLE_PQUEUE_SIZE";
+			case TRIPLE_PQUEUE_TOP:				return "TRIPLE_PQUEUE_TOP";
+			case TRIPLE_PQUEUE_TOP_PRIORITY:	return "TRIPLE_PQUEUE_TOP_PRIORITY";
 
 			default:
 				throw std::string("tripleOpToString: not implemented yet");

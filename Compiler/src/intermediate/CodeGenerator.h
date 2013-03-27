@@ -26,8 +26,6 @@ class CodeGenerator {
 
 	TripleTranslator			tripleTranslator;
 
-//	SymbolId castSymbolToPrimaryType(TypeId targetType, SymbolId symbol, TripleSequence& tripleSequence);
-//	SymbolId castSymbolToSymbol(SymbolId targetId, SymbolId symbol, TripleSequence& tripleSequence);
 	SymbolId castSymbolToType(TypeId targetType, SymbolId symbol, TripleSequence& tripleSequence, bool force = false);
 
 	void generateHeader();
@@ -46,7 +44,7 @@ class CodeGenerator {
 	TypeId maybeGetReferencedType(SymbolId id);
 
 public:
-	static std::string symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, ASTBuilder::SymbolId symbolId);
+	std::string symbolToAddr(ASTBuilder::SymbolId symbolId) const;
 
 	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type);
 	virtual ~CodeGenerator();

@@ -16,8 +16,9 @@
 namespace Compiler {
 
 CodeGenerator::CodeGenerator(ASTBuilder::TreeNode* p_root,
-		ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type) : p_root(p_root),
-				p_table(p_table), p_type(p_type), output(std::cout) {
+		ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type)
+			: p_root(p_root), p_table(p_table), p_type(p_type), output(std::cout),
+			  tripleTranslator(*this) {
 
 	validate();
 
@@ -68,6 +69,16 @@ void CodeGenerator::generateInitializationGlobalsCode() {
 		tripleTranslator.translate(p_table, p_type, output, ts);
 	}
 
+	TripleSequence ts;
+	for (std::map<ASTBuilder::SymbolId, ASTBuilder::Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
+		if (it->second.allocationType == ASTBuilder::ALLOCATION_VARIABLE_GLOBAL
+				&& p_type->get(it->second.typeId).getKind() == TYPE_KIND_PQUEUE) {
+
+			ts.push_back(Triple(TRIPLE_PQUEUE_INIT, it->first));
+		}
+	}
+	tripleTranslator.translate(p_table, p_type, output, ts);
+
 	output << "\tcall main\n";
 	output << "ret\n";
 	output << "endp\n\n";
@@ -77,7 +88,7 @@ void CodeGenerator::generateConstSection() {
 	output << "section '.data' readable \n";
 	for (std::map<ASTBuilder::SymbolId, ASTBuilder::Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
 		if (it->second.allocationType == ASTBuilder::ALLOCATION_CONST_GLOBAL) {
-			output << symbolToAddr(p_table, p_type, it->first) << '\t' << "dd\t" <<
+			output << symbolToAddr(it->first) << '\t' << "dd\t" <<
 					it->second.value << std::endl;
 		}
 	}
@@ -102,14 +113,14 @@ void CodeGenerator::generateGlobalVariableSection() {
 				output << "section '.data' readable writable\n";
 				firstLine = false;
 			}
-			output << symbolToAddr(p_table, p_type, it->first) << '\t' << "dd\t0"  << std::endl;
+			output << symbolToAddr(it->first) << '\t' << "dd\t0"  << std::endl;
 		}
 	}
 
 	output << std::endl;
 }
 
-std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, ASTBuilder::SymbolId symbolId) {
+std::string CodeGenerator::symbolToAddr(ASTBuilder::SymbolId symbolId) const {
 	const ASTBuilder::Symbol& symbol = p_table->find(symbolId);
 
 	Util::to_string(symbolId);
@@ -158,7 +169,7 @@ void CodeGenerator::generateProcedures() {
 					output << ", ";
 				}
 
-				output << symbolToAddr(p_table, p_type, (*it));
+				output << symbolToAddr(*it);
 			}
 		}
 
@@ -176,12 +187,12 @@ void CodeGenerator::generateProcedures() {
 			}
 		} else {
 			if (tripleSequence.empty() || tripleSequence.back().op != TRIPLE_RETURN_FUNCTION) {
+				std::cout << tripleOpToString(tripleSequence.back().op);
 				throw std::string("function ") + symbol.value + " must return value";
 			}
 		}
 		generateLocalVariables(tripleSequence);
 		tripleTranslator.translate(p_table, p_type, output, tripleSequence);
-//		printTripleSequence(output, tripleSequence);
 
 		output << "endp" << std::endl << std::endl;
 	}
@@ -211,7 +222,11 @@ void CodeGenerator::generateLocalVariables(TripleSequence& tripleSequence) {
 	for (std::set<SymbolId>::iterator it = locals.begin(); it != locals.end(); ++it) {
 		std::string size(p_table->find(*it).typeId == p_type->BASIC_DOUBLE_FLOAT ? ":QWORD" : ":DWORD");
 
-		output << '\t' << "local\t" << symbolToAddr(p_table, p_type, *it) << size << std::endl;
+		output << '\t' << "local\t" << symbolToAddr(*it) << size << std::endl;
+
+		if (p_type->get(p_table->find(*it).typeId).getKind() == TYPE_KIND_PQUEUE) {
+			tripleSequence.push_front(Triple(TRIPLE_PQUEUE_INIT, *it));
+		}
 	}
 }
 
@@ -244,7 +259,6 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 				if (p_right->nodeType != NODE_SYMBOL) {
 					generateTripleSequence(targetFuncId, p_right, tripleSequence);
 					rightAddr = castSymbolToType(returnTypeId, tripleSequence.back().result, tripleSequence);
-//					rightAddr = castSymbolToSymbol(targetFuncId, tripleSequence.back().result, tripleSequence);
 				} else {
 					rightAddr = castSymbolToType(returnTypeId, p_right->symbolId, tripleSequence);
 				}
@@ -379,9 +393,6 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 		}
 
 		TypeId type = p_table->find(argAddr).typeId;
-//		if (type == p_type->) {
-//			type = p_table->find(p_table->findCustomType(argAddr)).type;
-//		}
 		if (type == p_type->BASIC_FLOAT) {
 			SymbolId tempDouble = castSymbolToType(p_type->BASIC_DOUBLE_FLOAT, argAddr, tripleSequence);
 			tripleSequence.push_back(
@@ -410,16 +421,11 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 				(p_table->find(p_arg->symbolId).allocationType != ALLOCATION_VARIABLE_GLOBAL &&
 				p_table->find(p_arg->symbolId).allocationType != ALLOCATION_VARIABLE_LOCAL)) {
 
-			std::cout << p_arg->symbolId << '\t' << allocationTypeToString(p_table->find(p_arg->symbolId).allocationType);
 			throw std::string("readln: argument is not l-value");
 		}
 
 		argAddr = p_arg->symbolId;
 		TypeId type = p_table->find(argAddr).typeId;
-
-//		if (type == p_typeSYMBOL_TYPE_CUSTOM) {
-//			type = p_table->find(p_table->findCustomType(argAddr)).type;
-//		}
 
 		if (type == p_type->BASIC_FLOAT) {
 			tripleSequence.push_back(Triple(TRIPLE_READLN_FLOAT, argAddr));
@@ -638,6 +644,45 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 
 		break;
 	}
+	case NODE_PQUEUE_SIZE: {
+		SymbolId symbolId = p_node->at(0)->symbolId;
+		SymbolId result = p_table->insertTemp(p_type->BASIC_INT);
+
+		tripleSequence.push_back(Triple(TRIPLE_PQUEUE_SIZE, result, symbolId));
+		break;
+	}
+
+	case NODE_PQUEUE_PUSH: {
+		SymbolId pqueueId	= p_node->at(0)->symbolId;
+		SymbolId itemId 	= maybeEval(targetFuncId, p_node->at(1), tripleSequence);
+		SymbolId priorityId = maybeEval(targetFuncId, p_node->at(2), tripleSequence);
+
+		TypeId itemType = p_type->get(p_table->find(pqueueId).typeId).getItemType();
+
+		SymbolId castedPriority = castSymbolToType(p_type->BASIC_INT, priorityId, tripleSequence);
+		SymbolId castedItem 	= castSymbolToType(itemType, itemId, tripleSequence);
+
+		tripleSequence.push_back(Triple(TRIPLE_PUSH_INT, castedItem));
+		tripleSequence.push_back(Triple(TRIPLE_PUSH_INT, castedPriority));
+		tripleSequence.push_back(Triple(TRIPLE_PQUEUE_PUSH, pqueueId));
+		break;
+	}
+
+	case NODE_PQUEUE_POP: {
+		SymbolId pqueueId = p_node->at(0)->symbolId;
+		tripleSequence.push_back(Triple(TRIPLE_PQUEUE_POP, pqueueId));
+		break;
+	}
+
+	case NODE_PQUEUE_TOP: {
+		SymbolId pqueueId = maybeEval(targetFuncId, p_node->at(0), tripleSequence);
+		TypeId itemTypeId = p_type->get(p_table->find(pqueueId).typeId).getItemType();
+
+		SymbolId resultId = p_table->insertTemp(itemTypeId);
+		tripleSequence.push_back(Triple(TRIPLE_PQUEUE_TOP, resultId, pqueueId));
+		break;
+	}
+
 	default:
 		throw ASTBuilder::nodeTypeToString(p_node->nodeType);
 	}
@@ -698,96 +743,27 @@ SymbolId CodeGenerator::castSymbolToType(TypeId targetTypeId, SymbolId symbolId,
 void CodeGenerator::generateFooter() {
 	output <<
 		"section '.idata' import data readable\n"
-		"library kernel,'kernel32.dll',msvcrt,'msvcrt.dll'\n"
+		"library kernel,'kernel32.dll',msvcrt,'msvcrt.dll', pqueue, 'libpqueue.dll'\n"
 		"import kernel, ExitProcess,'ExitProcess' \n"
-		"import msvcrt, printf,'printf', getchar, '_fgetchar', scanf, 'scanf'\n";
+		"import msvcrt, printf,'printf', getchar, '_fgetchar', scanf, 'scanf'\n"
+		"import pqueue, \\\n"
+			"\tpqueue_alloc, 'pqueue_alloc', \\\n"
+			"\tpqueue_size, 'pqueue_size', \\\n"
+			"\tpqueue_push, 'pqueue_push', \\\n"
+			"\tpqueue_pop, 'pqueue_pop', \\\n"
+			"\tpqueue_top_priority, 'pqueue_top_priority', \\\n"
+			"\tpqueue_top_value, 'pqueue_top_value'\n";
 }
 
 void CodeGenerator::validate() {
-//	for (std::map<SymbolId, Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
-//		if (p_type->get(it->second.typeId).getKind() == TYPE_KIND_FUNCTION && it->second.value == "main") {
-//			return;
-//		}
-//	}
-//
-//	throw std::string("main() undefined");
+	for (std::map<SymbolId, Symbol>::const_iterator it = p_table->begin(); it != p_table->end(); ++it) {
+		if (p_type->get(it->second.typeId).getKind() == TYPE_KIND_FUNCTION && it->second.value == "main") {
+			return;
+		}
+	}
+
+	throw std::string("main() undefined");
 }
-//
-//TypeId CodeGenerator::maybeUpcastFormCustomType(SymbolId id) {
-//	const Symbol& symbol = p_table->find(id);
-//	TypeId typeId = symbol.typeId;
-//
-////	if (typeId == SYMBOL_TYPE_CUSTOM) {
-////		type = p_table->find(p_table->findCustomType(id)).type;
-////	}
-//	return typeId;
-//}
-
-//SymbolId CodeGenerator::castSymbolToPrimaryType(TypeId targetType, SymbolId id, TripleSequence& tripleSequence) {
-//	assert(id != SYMBOL_UNDEFINED);
-//
-//	const Symbol& symbol = p_table->find(id);
-//
-//	if (targetType == symbol.typeId) {
-//		return id;
-//	}
-//
-//	if (targetType == p_type->BASIC_FLOAT) {
-//		TypeId type = maybeUpcastFormCustomType(id);
-//		if (type == p_type->BASIC_INT) {
-//			SymbolId tempFloat = p_table->insertTemp(targetType);
-//			tripleSequence.push_back(Triple(TRIPLE_INT_TO_FLOAT, tempFloat, id));
-//			return tempFloat;
-//		}
-//	}
-//
-//	if (targetType == p_type->BASIC_DOUBLE_FLOAT) {
-//		TypeId type = maybeUpcastFormCustomType(id);
-//		if (type == p_type->BASIC_INT) {
-//			SymbolId tempDouble = p_table->insertTemp(targetType);
-//			tripleSequence.push_back(Triple(TRIPLE_INT_TO_DOUBLE_FLOAT, tempDouble, id));
-//			return tempDouble;
-//		}
-//
-//		if (type == p_type->BASIC_FLOAT) {
-//			SymbolId tempDouble = p_table->insertTemp(targetType);
-//			tripleSequence.push_back(Triple(TRIPLE_FLOAT_TO_DOUBLE_FLOAT, tempDouble, id));
-//			return tempDouble;
-//		}
-//	}
-//
-//
-//	throw std::string("cant convert");
-//}
-
-//SymbolId CodeGenerator::castSymbolToSymbol(SymbolId targetId,
-//		SymbolId symbolId, TripleSequence& tripleSequence) {
-//
-//	const Symbol& targetSymbol = p_table->find(targetId);
-//	const Symbol& symbol 	   = p_table->find(symbolId);
-//
-////	if (symbol.type == SYMBOL_TYPE_CUSTOM && targetSymbol.type == SYMBOL_TYPE_CUSTOM) {
-////		if (p_table->findCustomType(targetId) != p_table->findCustomType(symbolId)) {
-////			throw std::string("different types");
-////		}
-////
-////		return symbolId;
-////	}
-//
-////	if (symbol.type == SYMBOL_TYPE_CUSTOM && targetSymbol.type != SYMBOL_TYPE_CUSTOM) {
-////		if (maybeUpcastFormCustomType(symbolId) == targetSymbol.type) {
-////			return symbolId;
-////		}
-////
-////		throw std::string("cannot cast");
-////	}
-//
-////	if (symbol.type != SYMBOL_TYPE_CUSTOM && targetSymbol.type == SYMBOL_TYPE_CUSTOM) {
-////		return castSymbolToPrimaryType(p_table->find(p_table->findCustomType(targetId)).type, symbolId, tripleSequence);
-////	}
-//
-//	return castSymbolToPrimaryType(targetSymbol.typeId, symbolId, tripleSequence);
-//}
 
 SymbolId CodeGenerator::maybeEval(SymbolId targetFuncId,
 		TreeNode* p_node, TripleSequence& tripleSequence) {
