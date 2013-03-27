@@ -8,8 +8,7 @@
 #include <cassert>
 #include <set>
 
-#include "../util/util.h"
-#include "SymbolTable.h"
+#include "util/util.h"
 #include "CodeGenerator.h"
 #include "TripleTranslator.h"
 
