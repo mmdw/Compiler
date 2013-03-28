@@ -85,6 +85,14 @@ namespace Compiler {
 
 	std::string tripleOpToString(TripleOp op);
 
+	struct TripleArg {
+		bool isAddr;
+		union {
+			SymbolId sym;
+			int 	 pos;
+		};
+	};
+
 	struct Triple {
 		TripleOp op;
 

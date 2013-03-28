@@ -736,7 +736,8 @@ SymbolId CodeGenerator::castSymbolToType(TypeId targetTypeId, SymbolId symbolId,
 		}
 	}
 
-	throw std::string("castSymbolToType: not implemented yet");
+	throw std::string("castSymbolToType:cannot cast from \"") + p_type->get(symbolTypeId).getName()
+			+ "\" to \"" + p_type->get(targetTypeId).getName() + '"';
 }
 
 void CodeGenerator::generateFooter() {

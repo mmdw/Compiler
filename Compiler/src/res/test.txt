@@ -6,6 +6,7 @@ void main() {
 	pqueue<bool> q;
 	int y = 20;	
 	{
+		y = 40;
 		float y = 30;
 	}
 }

@@ -44,23 +44,20 @@
 	std::string*	str;
 }
 %type <val> exp
-%type <val> factor
-%type <val> term
-%type <val> term1
+%type <val> exp_5
+%type <val> exp_6
+%type <val> exp_7
 %type <val> program
 %type <val> statement_seq
 %type <val> statement
 %type <val> definition_seq
-
 %type <val> local_variable_definition
 %type <val> local_variable_definition_with_init
 %type <val> global_variable_definition
 %type <val> global_variable_definition_with_init
-
 %type <val> marker_block_start marker_block_end
-
-%type <val> func_decl_0
-%type <val> func_decl_1
+%type <val> func_def_1
+%type <val> func_def_2
 %type <val> func_def
 %type <val> type_def
 %type <val> block
@@ -69,22 +66,24 @@
 %type <val> arg_definition_seq
 %type <val> func_arg
 %type <val> arg
-%type <val> exp_arithm
-%type <val> exp_logic_0
-%type <val> exp_logic_1
-%type <val> exp_logic_2
-%type <val> exp_logic_3
-%type <val> exp_logic_4
+%type <val> exp_0
+%type <val> exp_1
+%type <val> exp_2
+%type <val> exp_3
+%type <val> exp_4
 %type <val> while_statement
 %type <val> identifier
 %type <val> if_statement
 
 
-%token <tptr> ADD NOT SUB MUL DIV DOT OP CP EOL OB CB SEMICOLON COMMA EQUAL NOT_EQUAL AND OR LESS LESS_EQUAL GREATER GREATER_EQUAL ASSIGN KEYWORD_IF KEYWORD_ELSE KEYWORD_WHILE KEYWORD_PRINTLN KEYWORD_PRINT KEYWORD_PQUEUE KEYWORD_CAST KEYWORD_READLN KEYWORD_TYPEDEF PQUEUE_PUSH PQUEUE_POP PQUEUE_SIZE PQUEUE_TOP PQUEUE_TOP_PRIORITY
-%token <val>  KEYWORD_RETURN  
+%token <tptr> ADD  NOT SUB CB MUL DIV DOT OP CP EOL OR OB SEMICOLON AND COMMA
+%token <tptr> EQUAL				NOT_EQUAL		LESS 			LESS_EQUAL 		GREATER 		GREATER_EQUAL 	ASSIGN 
+%token <tptr> KEYWORD_VOID 		KEYWORD_IF 		KEYWORD_ELSE 	KEYWORD_WHILE 	KEYWORD_PRINTLN KEYWORD_PRINT
+%token <tptr> KEYWORD_PQUEUE 	KEYWORD_CAST 	KEYWORD_READLN 	KEYWORD_RETURN
+%token <tptr> KEYWORD_TYPEDEF 	PQUEUE_PUSH 	PQUEUE_POP 		PQUEUE_SIZE 	PQUEUE_TOP 		PQUEUE_TOP_PRIORITY
 
-%type  <typeId> typename
-%token <str> INT_NUMBER  FLOAT_NUMBER  KEYWORD_CHAR IDENTIFIER KEYWORD_VOID KEYWORD_INT KEYWORD_FLOAT KEYWORD_STRUCT KEYWORD_BOOL BOOL_VALUE
+%type <typeId> typename
+%token <str> IDENTIFIER 		INT_NUMBER  	FLOAT_NUMBER  	KEYWORD_CHAR 	KEYWORD_INT 	KEYWORD_FLOAT 	KEYWORD_BOOL 	BOOL_VALUE
 
 %%
 
@@ -93,9 +92,9 @@ program : definition_seq									{ *pp_root = $1; }
 
 definition_seq : 											{ $$ = new TreeNode(NODE_DEFINITION_SEQUENCE); }
  | definition_seq func_def									{ $$ = $1->append($2); }
- | definition_seq global_variable_definition				{  }
+ | definition_seq global_variable_definition				
  | definition_seq global_variable_definition_with_init		{ $$ = $1->append($2); }
- | definition_seq type_def									{  }
+ | definition_seq type_def									
  ;
 
 global_variable_definition : typename IDENTIFIER SEMICOLON	{ p_resolver->insertVariable($1, *$2, ALLOCATION_VARIABLE_GLOBAL);  }
@@ -128,23 +127,15 @@ typename : KEYWORD_INT								{ $$ = p_resolver->type()->BASIC_INT; }
  | KEYWORD_PQUEUE LESS typename GREATER				{ $$ = p_resolver->type()->pqueueType($3); }
  ;
  
-func_def :  func_decl_0 block marker_block_end 					{ $$->append($2); }
+func_def :  func_def_1 block marker_block_end 		{ $$->append($2); }
  ;
 
-func_decl_0 : func_decl_1  OP func_arg_definition CP
-	{ 
-	  std::list<SymbolId> args;
-	  TreeNode* p_args = $3;
-	  for (std::list<TreeNode*>::const_iterator it = p_args->childs.begin(); it != p_args->childs.end(); ++it) {
-	  	args.push_back((*it)->symbolId);
-	  }
-	  
-	  p_resolver->insertFunctionArgs($1->symbolId, args); 
-	  $$ =  $1; 
-	 }
+func_def_1 : func_def_2  OP func_arg_definition CP
+	{ p_resolver->insertFunctionArgs($1->symbolId, $3); 
+	  $$ = $1; }
  ;
 
-func_decl_1 : typename IDENTIFIER 									
+func_def_2 : typename IDENTIFIER 									
 	{ 	  TreeNode* p_node = new TreeNode(NODE_FUNCTION_DEFINITION);
 	 	  p_node->symbolId = p_resolver->insertFunction($1, *$2); 
 	 	  $$ =  p_node;  }
@@ -191,7 +182,6 @@ statement : exp SEMICOLON
  | KEYWORD_PRINTLN OP 		exp CP			SEMICOLON				{ $$ = (new TreeNode(NODE_PRINTLN))->append($3);			}
  | KEYWORD_PRINT   OP 		exp CP			SEMICOLON				{ $$ = (new TreeNode(NODE_PRINT))->append($3);				}
  | KEYWORD_READLN  OP		identifier CP 	SEMICOLON  			 	{ $$ = (new TreeNode(NODE_READLN))->append($3);				}
- 
  ;
 
 if_statement: KEYWORD_IF OP exp CP statement						{ $$ = (new TreeNode(NODE_IF))->append($3)->append($5);  }
@@ -203,70 +193,69 @@ identifier : IDENTIFIER
 	   $$ = p_node; }
  ;
  
-exp : exp_logic_0
+exp : exp_0
  ;
 
-exp_logic_0 : exp_logic_1
- | exp_logic_0 OR exp_logic_1										{ $$ = (new TreeNode(NODE_OR))->append($1)->append($3); }
+exp_0 : exp_1
+ | exp_0 OR exp_1					{ $$ = (new TreeNode(NODE_OR))->append($1)->append($3); }
  ;
 
-exp_logic_1 : exp_logic_2						
- | exp_logic_1 AND exp_logic_2										{ $$ = (new TreeNode(NODE_AND))->append($1)->append($3); }
+exp_1 : exp_2						
+ | exp_1 AND exp_2					{ $$ = (new TreeNode(NODE_AND))->append($1)->append($3); }
  ;
 
-exp_logic_2 : exp_logic_3
- | exp_logic_2 EQUAL exp_logic_3									{ $$ = (new TreeNode(NODE_EQUAL))->append($1)->append($3); }
- | exp_logic_2 NOT_EQUAL exp_logic_3								{ $$ = (new TreeNode(NODE_NOT_EQUAL))->append($1)->append($3); }
+exp_2 : exp_3
+ | exp_2 EQUAL exp_3				{ $$ = (new TreeNode(NODE_EQUAL))->append($1)->append($3); }
+ | exp_2 NOT_EQUAL exp_3			{ $$ = (new TreeNode(NODE_NOT_EQUAL))->append($1)->append($3); }
  ;
 
-exp_logic_3 : exp_logic_4
- | exp_logic_4 LESS exp_logic_4					{ $$ = (new TreeNode(NODE_LESS))->append($1)->append($3);  }
- | exp_logic_4 LESS_EQUAL exp_logic_4			{ $$ = (new TreeNode(NODE_LESS_EQUAL))->append($1)->append($3); }
- | exp_logic_4 GREATER exp_logic_4				{ $$ = (new TreeNode(NODE_GREATER))->append($1)->append($3);  }
- | exp_logic_4 GREATER_EQUAL exp_logic_4		{ $$ = (new TreeNode(NODE_GREATER_EQUAL))->append($1)->append($3); }
+exp_3 : exp_4
+ | exp_4 LESS exp_4					{ $$ = (new TreeNode(NODE_LESS))->append($1)->append($3);  }
+ | exp_4 LESS_EQUAL exp_4			{ $$ = (new TreeNode(NODE_LESS_EQUAL))->append($1)->append($3); }
+ | exp_4 GREATER exp_4				{ $$ = (new TreeNode(NODE_GREATER))->append($1)->append($3);  }
+ | exp_4 GREATER_EQUAL exp_4		{ $$ = (new TreeNode(NODE_GREATER_EQUAL))->append($1)->append($3); }
  
-exp_logic_4 : exp_arithm
+
+exp_4: exp_5
+ | exp_4 ADD exp_5					{ $$ = (new TreeNode(NODE_ADD))->append($1)->append($3); }
+ | exp_4 SUB exp_5					{ $$ = (new TreeNode(NODE_SUB))->append($1)->append($3); }
  ;
 
-exp_arithm: factor
- | exp_arithm ADD factor						{ $$ = (new TreeNode(NODE_ADD))->append($1)->append($3); }
- | exp_arithm SUB factor						{ $$ = (new TreeNode(NODE_SUB))->append($1)->append($3); }
+exp_5: exp_6
+ | exp_5 MUL exp_6					{ $$ = (new TreeNode(NODE_MUL))->append($1)->append($3); }
+ | exp_5 DIV exp_6					{ $$ = (new TreeNode(NODE_DIV))->append($1)->append($3); }
  ;
 
-factor: term
- | factor MUL term								{ $$ = (new TreeNode(NODE_MUL))->append($1)->append($3); }
- | factor DIV term								{ $$ = (new TreeNode(NODE_DIV))->append($1)->append($3); }
- ;
-
-term: term1
- | SUB term											{ $$ = (new TreeNode(NODE_UMINUS))->append($2); 		  	}
- | NOT term											{ $$ = (new TreeNode(NODE_NOT))->append($2); 		 	  	}
- | KEYWORD_CAST	LESS typename GREATER OP exp CP		{ TreeNode* p_node = (new TreeNode(NODE_CAST))->append($6);
- 													  p_node->setTypeId($3); 		 	  
- 													  $$ = p_node; }
+exp_6: exp_7
+ | SUB exp_6						{ $$ = (new TreeNode(NODE_UMINUS))->append($2); 		  	}
+ | NOT exp_6						{ $$ = (new TreeNode(NODE_NOT))->append($2); 		 	  	}
+ | KEYWORD_CAST	LESS typename GREATER OP exp CP	
+ 									{ TreeNode* p_node = (new TreeNode(NODE_CAST))->append($6);
+ 									  p_node->setTypeId($3); 		 	  
+ 									  $$ = p_node; }
  ;
  
-term1: INT_NUMBER								{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
-												  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_INT);
-												  $$ = p_node; }
+exp_7: INT_NUMBER					{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
+									  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_INT);
+									  $$ = p_node; }
 												  
- | FLOAT_NUMBER									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
-												  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_FLOAT);
-												  $$ = p_node; } 
+ | FLOAT_NUMBER						{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
+									  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_FLOAT);
+									  $$ = p_node; } 
 												  
- | BOOL_VALUE									{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
-												  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_BOOL);
-												  $$ = p_node; } 
- | identifier										{ }
- | OP exp CP 										{ $$ = $2; } 
- | identifier OP func_arg CP						{ $$ = (new TreeNode(NODE_CALL))->append($1)->append($3); 	} 
+ | BOOL_VALUE						{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
+									  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_BOOL);
+									  $$ = p_node; } 
+ | identifier						{ }
+ | OP exp CP 						{ $$ = $2; } 
+ | identifier OP func_arg CP		{ $$ = (new TreeNode(NODE_CALL))->append($1)->append($3); 	} 
 
- | term1 PQUEUE_TOP  OP CP							{ $$ = (new TreeNode(NODE_PQUEUE_TOP))->append($1);							}
- | term1 PQUEUE_SIZE  OP CP							{ $$ = (new TreeNode(NODE_PQUEUE_SIZE))->append($1);						}
- | term1 PQUEUE_TOP_PRIORITY  OP CP					{ $$ = (new TreeNode(NODE_PQUEUE_TOP_PRIORITY))->append($1);				}
+ | exp_7 PQUEUE_TOP  OP CP			{ $$ = (new TreeNode(NODE_PQUEUE_TOP))->append($1);							}
+ | exp_7 PQUEUE_SIZE  OP CP						{ $$ = (new TreeNode(NODE_PQUEUE_SIZE))->append($1);						}
+ | exp_7 PQUEUE_TOP_PRIORITY  OP CP				{ $$ = (new TreeNode(NODE_PQUEUE_TOP_PRIORITY))->append($1);				}
   
- | term1 PQUEUE_PUSH  OP exp COMMA exp CP		{ $$ = (new TreeNode(NODE_PQUEUE_PUSH))->append($1)->append($4)->append($6);}
- | term1 PQUEUE_POP   OP CP						{ $$ = (new TreeNode(NODE_PQUEUE_POP))->append($1);							}
+ | exp_7 PQUEUE_PUSH  OP exp COMMA exp CP		{ $$ = (new TreeNode(NODE_PQUEUE_PUSH))->append($1)->append($4)->append($6);}
+ | exp_7 PQUEUE_POP   OP CP						{ $$ = (new TreeNode(NODE_PQUEUE_POP))->append($1);							}
  ;
  
 func_arg: 										{ $$ = new TreeNode(NODE_FUNCTION_ARGUMENTS); }
@@ -282,7 +271,7 @@ arg : exp										{ $$ = (new TreeNode(NODE_FUNCTION_ARGUMENTS))->append($1); }
 void Compiler::ASTBuilder::Parser::error(const Compiler::ASTBuilder::Parser::location_type &loc,
                                           const std::string &msg) {
 	std::ostringstream ret;
-	ret << "Parser Error at " << loc << ": " << msg;
+	ret << "Parser Error at line " << loc.begin.line << " column " << loc.begin.column << ": " << msg;
 	throw ret.str();
 }
 

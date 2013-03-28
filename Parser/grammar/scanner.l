@@ -4,6 +4,8 @@
 	#include "src/StringHolder.h"
 	
 	#define YY_USER_ACTION yylloc->columns(yyleng);
+	
+	typedef Compiler::ASTBuilder::Parser::token Token;
 %}
 
 %option nodefault yyclass="Scanner" noyywrap c++
@@ -18,61 +20,57 @@ INT				[[:digit:]]+
 	yylloc->step();
 %}
 
+pqueue			{  return Token::KEYWORD_PQUEUE; }
+cast			{  return Token::KEYWORD_CAST; }
+char			{  return Token::KEYWORD_CHAR; }
+void 			{  return Token::KEYWORD_VOID; }
+int 			{  return Token::KEYWORD_INT; }
+float			{  return Token::KEYWORD_FLOAT; }
+bool			{  return Token::KEYWORD_BOOL; }
+while			{  return Token::KEYWORD_WHILE; }
+println			{  return Token::KEYWORD_PRINTLN; }
+print			{  return Token::KEYWORD_PRINT; }
+readln			{  return Token::KEYWORD_READLN; }			
+typedef			{ return Token::KEYWORD_TYPEDEF; }
+return 			{ return Token::KEYWORD_RETURN; }
+if				{ return Token::KEYWORD_IF; }
+else			{ return Token::KEYWORD_ELSE; }
 
-pqueue			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PQUEUE; }
-cast			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CAST; }
-char			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_CHAR; }
-void 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_VOID; }
-int 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_INT; }
-struct 			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_STRUCT; }
-float			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_FLOAT; }
-bool			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_BOOL; }
-true			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
-false			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::BOOL_VALUE; }
-while			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_WHILE; }
-println			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINTLN; }
-print			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_PRINT; }
-readln			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_READLN; }			
-typedef			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng));  return Compiler::ASTBuilder::Parser::token::KEYWORD_TYPEDEF; }
-	
-return 			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_RETURN; }
+"+"			 	{ return Token::ADD; }
+"-"			 	{ return Token::SUB; }
+"*"			 	{ return Token::MUL; }
+"/"			 	{ return Token::DIV; }
+";"				{ return Token::SEMICOLON; }
+"("     	 	{ return Token::OP; }
+")"      	 	{ return Token::CP; }
+"{"				{ return Token::OB; }
+"}"				{ return Token::CB; }
+"!"			 	{ return Token::NOT; }
+"."				{ return Token::DOT; }
+".push"			{ return Token::PQUEUE_PUSH; }
+".pop"			{ return Token::PQUEUE_POP; }
+".top"			{ return Token::PQUEUE_TOP; }
+".topPriority"	{ return Token::PQUEUE_TOP_PRIORITY; }
+".size"			{ return Token::PQUEUE_SIZE; }
+,				{ return Token::COMMA; }
+==				{ return Token::EQUAL; }
+!=				{ return Token::NOT_EQUAL; }
+"&&"			{ return Token::AND; }
+"||"			{ return Token::OR; }
+"<"				{ return Token::LESS; }
+">"				{ return Token::GREATER; }
+"<="			{ return Token::LESS_EQUAL; }
+">="			{ return Token::GREATER_EQUAL; }
+"="				{ return Token::ASSIGN; }
 
+true			{  yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::BOOL_VALUE; }
+false			{  yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::BOOL_VALUE; }
 
-if				{ return Compiler::ASTBuilder::Parser::token::KEYWORD_IF; }
-else			{ return Compiler::ASTBuilder::Parser::token::KEYWORD_ELSE; }
-{IDENTIFIER} 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::IDENTIFIER; }
-"+"			 	{ return Compiler::ASTBuilder::Parser::token::ADD; }
-"-"			 	{ return Compiler::ASTBuilder::Parser::token::SUB; }
-"*"			 	{ return Compiler::ASTBuilder::Parser::token::MUL; }
-"/"			 	{ return Compiler::ASTBuilder::Parser::token::DIV; }
-";"				{ return Compiler::ASTBuilder::Parser::token::SEMICOLON; }
-"("     	 	{ return Compiler::ASTBuilder::Parser::token::OP; }
-")"      	 	{ return Compiler::ASTBuilder::Parser::token::CP; }
-"{"				{ return Compiler::ASTBuilder::Parser::token::OB; }
-"}"				{ return Compiler::ASTBuilder::Parser::token::CB; }
-"!"			 	{ return Compiler::ASTBuilder::Parser::token::NOT; }
-"."				{ return Compiler::ASTBuilder::Parser::token::DOT; }
-".push"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_PUSH; }
-".pop"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_POP; }
-".top"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_TOP; }
-".topPriority"	{ return Compiler::ASTBuilder::Parser::token::PQUEUE_TOP_PRIORITY; }
-".size"			{ return Compiler::ASTBuilder::Parser::token::PQUEUE_SIZE; }
-,				{ return Compiler::ASTBuilder::Parser::token::COMMA; }
-==				{ return Compiler::ASTBuilder::Parser::token::EQUAL; }
-!=				{ return Compiler::ASTBuilder::Parser::token::NOT_EQUAL; }
-"&&"			{ return Compiler::ASTBuilder::Parser::token::AND; }
-"||"			{ return Compiler::ASTBuilder::Parser::token::OR; }
-"<"				{ return Compiler::ASTBuilder::Parser::token::LESS; }
-">"				{ return Compiler::ASTBuilder::Parser::token::GREATER; }
-"<="			{ return Compiler::ASTBuilder::Parser::token::LESS_EQUAL; }
-">="			{ return Compiler::ASTBuilder::Parser::token::GREATER_EQUAL; }
-"="				{ return Compiler::ASTBuilder::Parser::token::ASSIGN; }
-
-
-{INT}		 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::INT_NUMBER; }
-{FLOAT}			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Compiler::ASTBuilder::Parser::token::FLOAT_NUMBER; }
+{IDENTIFIER} 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::IDENTIFIER; }
+{INT}		 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::INT_NUMBER; }
+{FLOAT}			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::FLOAT_NUMBER; }
 
 " "            	{ yylloc->step(); }
 \t				{ yylloc->step(); }
-\n      	 	{ yylloc->step(); }
+\n      	 	{ yylloc->lines(); }
 .				{ throw std::string("unknown token: ") + yytext; }

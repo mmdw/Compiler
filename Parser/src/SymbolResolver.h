@@ -8,6 +8,7 @@
 #ifndef SYMBOLRESOLVER_H_
 #define SYMBOLRESOLVER_H_
 
+#include <cassert>
 #include <iostream>
 #include <map>
 #include <string>
@@ -15,6 +16,7 @@
 
 #include "../headers/TypeTable.h"
 #include "../headers/SymbolTable.h"
+#include "../headers/TreeNode.h"
 
 namespace Compiler {
 namespace ASTBuilder {
@@ -73,7 +75,14 @@ public:
 		return id;
 	}
 
-	void insertFunctionArgs(SymbolId functionId, const std::list<SymbolId>& args) {
+	void insertFunctionArgs(SymbolId functionId, TreeNode* p_args) {
+	  assert(p_args->nodeType == NODE_FUNCTION_ARGUMENTS);
+
+	  std::list<SymbolId> args;
+	  for (std::list<TreeNode*>::const_iterator it = p_args->childs.begin(); it != p_args->childs.end(); ++it) {
+		args.push_back((*it)->symbolId);
+	  }
+
 		p_type->get(p_table->find(functionId).typeId).setArguments(args);
 	}
 
