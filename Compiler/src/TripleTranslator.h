@@ -20,7 +20,7 @@ class CodeGenerator;
 class TripleTranslator {
 public:
 	TripleTranslator(const CodeGenerator& cg);
-	void translate(ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os, std::list<Triple>& tripleSequence);
+	void translate(ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os, TripleSequence& tripleSequence);
 
 	LabelId newLabel();
 

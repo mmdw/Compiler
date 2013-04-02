@@ -9,6 +9,8 @@
 %parse-param { Compiler::ASTBuilder::SymbolResolver* 	p_resolver 	}
 %lex-param   { Compiler::ASTBuilder::Scanner &scanner 				}
 
+%error-verbose
+
 %code requires {
 	#include <string>
 	#include <sstream>
@@ -43,43 +45,28 @@
 	TypeId			typeId;
 	std::string*	str;
 }
-%type <val> exp
-%type <val> exp_5
-%type <val> exp_6
-%type <val> exp_7
+
 %type <val> program
-%type <val> statement_seq
-%type <val> statement
-%type <val> definition_seq
+%type <val> statement statement_seq
 %type <val> local_variable_definition
 %type <val> local_variable_definition_with_init
 %type <val> global_variable_definition
 %type <val> global_variable_definition_with_init
+%type <val> definition_seq
 %type <val> marker_block_start marker_block_end
-%type <val> func_def_1
-%type <val> func_def_2
-%type <val> func_def
+%type <val> func_def func_def_1 func_def_2
 %type <val> type_def
 %type <val> block
 %type <val> func_arg_definition
-%type <val> arg_definition
-%type <val> arg_definition_seq
-%type <val> func_arg
-%type <val> arg
-%type <val> exp_0
-%type <val> exp_1
-%type <val> exp_2
-%type <val> exp_3
-%type <val> exp_4
-%type <val> while_statement
-%type <val> identifier
-%type <val> if_statement
+%type <val> arg_definition arg_definition_seq
+%type <val> func_arg arg
+%type <val> exp exp_0 exp_1 exp_2 exp_3 exp_4 exp_5 exp_6 exp_7 
+%type <val> while_statement identifier if_statement
 
-
-%token <tptr> ADD  NOT SUB CB MUL DIV DOT OP CP EOL OR OB SEMICOLON AND COMMA
+%token <tptr> ADD  NOT SUB CB MUL DIV DOT OP CP EOL OR OB  SEMICOLON AND COMMA
 %token <tptr> EQUAL				NOT_EQUAL		LESS 			LESS_EQUAL 		GREATER 		GREATER_EQUAL 	ASSIGN 
 %token <tptr> KEYWORD_VOID 		KEYWORD_IF 		KEYWORD_ELSE 	KEYWORD_WHILE 	KEYWORD_PRINTLN KEYWORD_PRINT
-%token <tptr> KEYWORD_PQUEUE 	KEYWORD_CAST 	KEYWORD_READLN 	KEYWORD_RETURN
+%token <tptr> KEYWORD_PQUEUE 	KEYWORD_CAST 	KEYWORD_READLN 	KEYWORD_RETURN	KEYWORD_CLASS
 %token <tptr> KEYWORD_TYPEDEF 	PQUEUE_PUSH 	PQUEUE_POP 		PQUEUE_SIZE 	PQUEUE_TOP 		PQUEUE_TOP_PRIORITY
 
 %type <typeId> typename
@@ -87,14 +74,14 @@
 
 %%
 
-program : definition_seq									{ *pp_root = $1; }
+program : KEYWORD_CLASS IDENTIFIER OB definition_seq CB		{ *pp_root = $4; }
  ;
 
 definition_seq : 											{ $$ = new TreeNode(NODE_DEFINITION_SEQUENCE); }
  | definition_seq func_def									{ $$ = $1->append($2); }
  | definition_seq global_variable_definition				
  | definition_seq global_variable_definition_with_init		{ $$ = $1->append($2); }
- | definition_seq type_def									
+ | definition_seq type_def		
  ;
 
 global_variable_definition : typename IDENTIFIER SEMICOLON	{ p_resolver->insertVariable($1, *$2, ALLOCATION_VARIABLE_GLOBAL);  }
@@ -214,6 +201,7 @@ exp_3 : exp_4
  | exp_4 LESS_EQUAL exp_4			{ $$ = (new TreeNode(NODE_LESS_EQUAL))->append($1)->append($3); }
  | exp_4 GREATER exp_4				{ $$ = (new TreeNode(NODE_GREATER))->append($1)->append($3);  }
  | exp_4 GREATER_EQUAL exp_4		{ $$ = (new TreeNode(NODE_GREATER_EQUAL))->append($1)->append($3); }
+ ;
  
 
 exp_4: exp_5
@@ -246,7 +234,7 @@ exp_7: INT_NUMBER					{ TreeNode* p_node = new TreeNode(NODE_SYMBOL);
  | BOOL_VALUE						{ TreeNode* p_node = new TreeNode(NODE_SYMBOL); 
 									  p_node->symbolId = p_resolver->insertConst(*$1, p_resolver->type()->BASIC_BOOL);
 									  $$ = p_node; } 
- | identifier						{ }
+ | identifier						
  | OP exp CP 						{ $$ = $2; } 
  | identifier OP func_arg CP		{ $$ = (new TreeNode(NODE_CALL))->append($1)->append($3); 	} 
 
@@ -282,4 +270,3 @@ static int yylex(Compiler::ASTBuilder::Parser::semantic_type * yylval,
 	
 	return scanner.yylex(yylval, yylloc);
 }
-

@@ -11,7 +11,11 @@
 #include <ostream>
 #include <string>
 #include <list>
+#include <vector>
 
+#include <cassert>
+
+#include "definitions.h"
 #include "TreeNode.h"
 
 namespace Compiler {
@@ -39,6 +43,7 @@ namespace Compiler {
 		TRIPLE_CALL_PROCEDURE,
 		TRIPLE_INT_TO_FLOAT,
 		TRIPLE_INT_TO_DOUBLE_FLOAT,
+		TRIPLE_FLOAT_TO_INT,
 		TRIPLE_FLOAT_TO_DOUBLE_FLOAT,
 
 		TRIPLE_PRINTLN_INT,
@@ -85,36 +90,148 @@ namespace Compiler {
 
 	std::string tripleOpToString(TripleOp op);
 
-	struct TripleArg {
-		bool isAddr;
+	class TripleArg {
+	public:
+		int getPos() const {
+			assert(!_isNull);
+			assert(!_isSymbol);
+			return position;
+		}
+
+		SymbolId getSymbolId() const {
+			assert(!_isNull);
+			assert(_isSymbol);
+			return symbol;
+		}
+
+		void incPos() {
+			assert(!_isNull);
+			assert(!_isSymbol);
+
+			++position;
+		}
+
+		static TripleArg pos(int position) {
+			TripleArg result;
+			result._isNull = false;
+			result._isSymbol = false;
+			result.position = position;
+
+			return result;
+		}
+
+		static TripleArg sym(SymbolId symbolId) {
+			TripleArg result;
+			result._isNull = false;
+			result._isSymbol = true;
+			result.symbol = symbolId;
+
+			return result;
+		}
+
+		static TripleArg null() {
+			TripleArg result;
+			result._isNull = true;
+
+			return result;
+		}
+
+		bool isSymbol() const {
+			return _isSymbol;
+		}
+
+		bool isNull() const {
+			return _isNull;
+		}
+
+		TripleArg() : _isNull(true), _isSymbol(false) {}
+
+	private:
+		bool _isNull;
+		bool _isSymbol;
 		union {
-			SymbolId sym;
-			int 	 pos;
+			SymbolId symbol;
+			int 	 position;
 		};
+
 	};
 
 	struct Triple {
 		TripleOp op;
 
-		SymbolId result;
-		SymbolId arg1;
-		SymbolId arg2;
+		TripleArg arg1;
+		TripleArg arg2;
 
-		Triple(TripleOp op)
-		: op(op), result(SYMBOL_UNDEFINED), arg1(SYMBOL_UNDEFINED), arg2(SYMBOL_UNDEFINED) { }
+		TypeId returnType;
 
-		Triple(TripleOp op, const SymbolId& arg1)
-			: op(op), result(SYMBOL_UNDEFINED), arg1(arg1), arg2(SYMBOL_UNDEFINED) { }
+		Triple(TripleOp op, TypeId returnType)
+		: op(op), arg1(TripleArg::null()), arg2(TripleArg::null()), returnType(returnType) { }
 
-		Triple(TripleOp op, const SymbolId& result, const SymbolId& arg1)
-			: op(op), result(result), arg1(arg1), arg2(SYMBOL_UNDEFINED) { }
+		Triple(TripleOp op, const TripleArg& arg1, TypeId returnType)
+			: op(op), arg1(arg1), arg2(TripleArg::null()), returnType(returnType) { }
 
-		Triple(TripleOp op, const SymbolId& result, const SymbolId& arg1, const SymbolId& arg2)
-			: op(op), result(result), arg1(arg1), arg2(arg2) { }
+		Triple(TripleOp op, const TripleArg& arg1, const TripleArg& arg2, TypeId returnType)
+			: op(op), arg1(arg1), arg2(arg2), returnType(returnType) { }
 	};
 
-	typedef std::list<Triple> TripleSequence;
 
+	class NewTripleSequence {
+		std::vector<Triple> seq;
+
+	public:
+		typedef std::vector<Triple>::iterator iterator;
+
+		std::vector<Triple>::iterator begin() {
+			return seq.begin();
+		}
+
+		std::vector<Triple>::iterator end() {
+			return seq.end();
+		}
+
+		void append(Triple triple) {
+			seq.push_back(triple);
+		}
+
+		void append_front(Triple triple) {
+			seq.insert(seq.begin(), triple);
+
+			std::vector<Triple>::iterator it = seq.begin();
+			++it;
+			for (/* */; it != seq.end(); ++it) {
+				if (!it->arg1.isNull() && !it->arg1.isSymbol()) {
+					it->arg1.incPos();
+				}
+
+				if (!it->arg2.isNull() && !it->arg2.isSymbol()) {
+					it->arg2.incPos();
+				}
+			}
+		}
+
+		int lastIndex() {
+//			assert(!seq.empty());
+			return seq.size() - 1;
+		}
+
+		const Triple last() {
+			return seq.at(lastIndex());
+		}
+
+		bool isEmpty() {
+			return seq.empty();
+		}
+
+		TripleArg argBack() {
+			return TripleArg::pos(lastIndex());
+		}
+
+		const Triple& at(int pos) {
+			return seq.at(pos);
+		}
+	};
+
+	typedef NewTripleSequence TripleSequence;
 	void printTripleSequence(std::ostream& os, TripleSequence& seq);
 }
 

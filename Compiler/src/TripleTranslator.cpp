@@ -86,6 +86,10 @@ static std::string fstp(const std::string& arg) {
 	return "fstp\tdword\t" + arg;
 }
 
+static std::string fistp(const std::string& arg) {
+	return "fistp\tdword\t" + arg;
+}
+
 static std::string fld_dword(const std::string& arg) {
 	return "fld\tdword\t" + arg;
 }
@@ -167,93 +171,105 @@ static std::string ffree(const std::string& arg1) {
 }
 
 void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_type, std::ostream& os,
-		 std::list<Triple>& tripleSequence) {
+		 TripleSequence& tripleSequence) {
 
-	for (std::list<Triple>::iterator it = tripleSequence.begin(); it != tripleSequence.end(); ++it) {
+	int i = 0;
+	for (std::vector<Triple>::iterator it = tripleSequence.begin(); it != tripleSequence.end(); ++it, ++i) {
 		Triple triple = *it;
+
+		std::string tripleRes = cg.tripleArgToAddr(TripleArg::pos(i));
+
+		if (triple.returnType != -1) {
+			std::string size(triple.returnType == p_type->BASIC_DOUBLE_FLOAT ? ":QWORD" : ":DWORD");
+
+			append(os,  "local\t" + tripleRes + size);
+		}
 
 		switch(triple.op) {
 		case TRIPLE_OR:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, _or(EAX, b(cg.symbolToAddr(triple.arg2))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, _or(EAX, b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_AND:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, _and(EAX, b(cg.symbolToAddr(triple.arg2))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, _and(EAX, b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_ADD_INT:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, add(EAX, b(cg.symbolToAddr(triple.arg2))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, add(EAX, b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_ADD_FLOAT:
-			append(os, fld(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fadd(b(cg.symbolToAddr(triple.arg2))));
-			append(os, fstp(b(cg.symbolToAddr(triple.result))));
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fadd(b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, fstp(b(tripleRes)));
 			break;
 		case TRIPLE_SUB_INT:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, sub(EAX, b(cg.symbolToAddr(triple.arg2))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, sub(EAX, b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_SUB_FLOAT:
-			append(os, fld(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fsub(b(cg.symbolToAddr(triple.arg2))));
-			append(os, fstp(b(cg.symbolToAddr(triple.result))));
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fsub(b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, fstp(b(tripleRes)));
 			break;
 		case TRIPLE_MUL_INT:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, imul(EAX, b(cg.symbolToAddr(triple.arg2))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, imul(EAX, b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_MUL_FLOAT:
-			append(os, fld(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fmul(b(cg.symbolToAddr(triple.arg2))));
-			append(os, fstp(b(cg.symbolToAddr(triple.result))));
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fmul(b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, fstp(b(tripleRes)));
 			break;
 		case TRIPLE_DIV_INT:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, _xor(EDX, EDX));
-			append(os, idiv(b(cg.symbolToAddr(triple.arg2))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, idiv(b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_DIV_FLOAT:
-			append(os, fld(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fdiv(b(cg.symbolToAddr(triple.arg2))));
-			append(os, fstp(b(cg.symbolToAddr(triple.result))));
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fdiv(b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, fstp(b(tripleRes)));
 			break;
 		case TRIPLE_RETURN_PROCEDURE:
 			append(os, RET);
 			break;
 		case TRIPLE_RETURN_FUNCTION:
-			append(os, lea(ESI, b(cg.symbolToAddr(triple.arg1))));
+			append(os, lea(ESI, b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, mov(EDI, b("__ret_ref")));
-			append(os, mov(ECX, "2")); // FIXME
+			append(os, mov(ECX, "1")); // FIXME
 			append(os, CLD);
 			append(os, REP_MOVSD);
 			append(os, RET);
 			break;
 		case TRIPLE_COPY:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, mov(b(cg.tripleArgToAddr(triple.arg1)), EAX));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 
 		case TRIPLE_PUSH_BOOL:
 		case TRIPLE_PUSH_FLOAT:
 		case TRIPLE_PUSH_INT:
-			append(os, push(b(cg.symbolToAddr(triple.arg1))));
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			break;
 		case TRIPLE_CALL_FUNCTION:
-			append(os, call(cg.symbolToAddr(triple.arg1)));
+			append(os, lea(EAX, b(tripleRes)));
+			append(os, push(EAX));
+			append(os, call(cg.tripleArgToAddr(triple.arg1)));
 			break;
 		case TRIPLE_CALL_PROCEDURE:
-			append(os, call(cg.symbolToAddr(triple.arg1)));
+			append(os, call(cg.tripleArgToAddr(triple.arg1)));
 			break;
 		case TRIPLE_PRINT_INT:
 		case TRIPLE_PRINTLN_INT:
-			append(os, printInt(b(cg.symbolToAddr(triple.arg1))));
+			append(os, printInt(b(cg.tripleArgToAddr(triple.arg1))));
 			if (triple.op == TRIPLE_PRINTLN_INT) {
 				append(os, PRINT_NEWLINE);
 			}
@@ -261,8 +277,8 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 		case TRIPLE_PRINT_DOUBLE_FLOAT:
 		case TRIPLE_PRINTLN_DOUBLE_FLOAT:
 			append(os, printDoubleFloat(
-					b(cg.symbolToAddr(triple.arg1)),
-					b(cg.symbolToAddr(triple.arg1) + " + 4")
+					b(cg.tripleArgToAddr(triple.arg1)),
+					b(cg.tripleArgToAddr(triple.arg1) + " + 4")
 				));
 			if (triple.op == TRIPLE_PRINTLN_DOUBLE_FLOAT) {
 				append(os, PRINT_NEWLINE);
@@ -270,7 +286,7 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 			break;
 		case TRIPLE_PRINT_BOOL:
 		case TRIPLE_PRINTLN_BOOL:
-			append(os, push(b(cg.symbolToAddr(triple.arg1))));
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, call("__print_bool"));
 			if (triple.op == TRIPLE_PRINTLN_BOOL) {
 				append(os, PRINT_NEWLINE);
@@ -278,7 +294,7 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 			break;
 		case TRIPLE_READLN_FLOAT:
 		case TRIPLE_READLN_INT: {
-			append(os, lea(EAX, b(cg.symbolToAddr(triple.arg1))));
+			append(os, lea(EAX, b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, push(EAX));
 			if (triple.op == TRIPLE_READLN_INT) {
 				append(os, CCALL_SCANF_INT);
@@ -289,31 +305,35 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 		}
 			break;
 		case TRIPLE_INT_TO_FLOAT:
-			append(os, fild(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fstp(b(cg.symbolToAddr(triple.result))));
+			append(os, fild(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fstp(b(tripleRes)));
+			break;
+		case TRIPLE_FLOAT_TO_INT:
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fistp(b(tripleRes)));
 			break;
 		case TRIPLE_FLOAT_TO_DOUBLE_FLOAT:
-			append(os, fld_dword(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fstp_qword(b(cg.symbolToAddr(triple.result))));
+			append(os, fld_dword(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fstp_qword(b(tripleRes)));
 			break;
 		case TRIPLE_PUSH_PTR:
-			append(os, lea(EAX, b(cg.symbolToAddr(triple.arg1))));
+			append(os, lea(EAX, b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, push(EAX));
 			break;
 		case TRIPLE_NEG_INT:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, neg(EAX));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_NEG_FLOAT:
 			append(os, "fldz");
-			append(os, fsub(b(cg.symbolToAddr(triple.arg1))));
-			append(os, fstp(b(cg.symbolToAddr(triple.result))));
+			append(os, fsub(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fstp(b(tripleRes)));
 			break;
 		case TRIPLE_NOT:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, _not(EAX));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_EQUAL_INT:
 		case TRIPLE_NOT_EQUAL_INT:
@@ -323,10 +343,10 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 		case TRIPLE_LESS_EQUAL_INT:
 			append(os, _xor(ECX, ECX));
 			append(os, mov(EBX, "-1"));
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
-			append(os, cmp(EAX, b(cg.symbolToAddr(triple.arg2))));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, cmp(EAX, b(cg.tripleArgToAddr(triple.arg2))));
 			append(os, inst(cmpInstruction(triple.op) + '\t', ECX, EBX));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), ECX));
+			append(os, mov(b(tripleRes), ECX));
 			break;
 		case TRIPLE_EQUAL_FLOAT:
 		case TRIPLE_NOT_EQUAL_FLOAT:
@@ -335,45 +355,50 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 			append(os, _xor(ECX, ECX));
 			append(os, mov(EBX, "-1"));
 
-			append(os, fld(b(cg.symbolToAddr(triple.arg2))));
-			append(os, fld(b(cg.symbolToAddr(triple.arg1))));
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg2))));
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, inst("fcomip\t", "st0", "st1"));
 			append(os, inst(cmpInstruction(triple.op) + '\t', ECX, EBX));
 			append(os, ffree(ST0));
-			append(os, mov(b(cg.symbolToAddr(triple.result)), ECX));
+			append(os, mov(b(tripleRes), ECX));
 			break;
 		case TRIPLE_LABEL:
-			append(os, cg.symbolToAddr(triple.arg1) + ':');
+			append(os, cg.tripleArgToAddr(triple.arg1) + ':');
 			break;
 		case TRIPLE_JZ:
-			append(os, mov(EAX, b(cg.symbolToAddr(triple.arg1))));
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg2))));
 			append(os, cmp(EAX, "0"));
-			append(os, jz(cg.symbolToAddr(triple.result)));
+			append(os, jz(cg.tripleArgToAddr(triple.arg1)));
 			break;
 		case TRIPLE_JMP:
-			append(os, jmp(cg.symbolToAddr(triple.arg1)));
+			append(os, jmp(cg.tripleArgToAddr(triple.arg1)));
 			break;
 		case TRIPLE_PQUEUE_INIT:
 			append(os, "ccall [pqueue_alloc]");
-			append(os, mov(b(cg.symbolToAddr(triple.arg1)), EAX));
+			append(os, mov(b(cg.tripleArgToAddr(triple.arg1)), EAX));
 			break;
 		case TRIPLE_PQUEUE_SIZE:
-			append(os, push(b(cg.symbolToAddr(triple.arg1))));
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, "ccall [pqueue_size]");
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		case TRIPLE_PQUEUE_PUSH:
-			append(os, push(b(cg.symbolToAddr(triple.arg1))));
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, "ccall [pqueue_push]");
 			break;
 		case TRIPLE_PQUEUE_POP:
-			append(os, push(b(cg.symbolToAddr(triple.arg1))));
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, "ccall [pqueue_pop]");
 			break;
 		case TRIPLE_PQUEUE_TOP:
-			append(os, push(b(cg.symbolToAddr(triple.arg1))));
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, "ccall [pqueue_top_value]");
-			append(os, mov(b(cg.symbolToAddr(triple.result)), EAX));
+			append(os, mov(b(tripleRes), EAX));
+			break;
+		case TRIPLE_PQUEUE_TOP_PRIORITY:
+			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, "ccall [pqueue_top_priority]");
+			append(os, mov(b(tripleRes), EAX));
 			break;
 		default:
 			throw std::string("translate failed: ") + tripleOpToString(triple.op);

@@ -76,6 +76,8 @@ namespace Compiler {
 
 			NODE_WHILE_STATEMENT,
 
+			NODE_LABEL,
+
 			NODE_UNDEFINED
 		};
 

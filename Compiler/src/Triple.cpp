@@ -60,6 +60,7 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_PQUEUE_SIZE:			return "TRIPLE_PQUEUE_SIZE";
 			case TRIPLE_PQUEUE_TOP:				return "TRIPLE_PQUEUE_TOP";
 			case TRIPLE_PQUEUE_TOP_PRIORITY:	return "TRIPLE_PQUEUE_TOP_PRIORITY";
+			case TRIPLE_FLOAT_TO_INT:			return "TRIPLE_FLOAT_TO_INT";
 
 			default:
 				throw std::string("tripleOpToString: not implemented yet");
@@ -69,19 +70,16 @@ std::string tripleOpToString(TripleOp op) {
 void printTripleSequence(std::ostream& os, TripleSequence& seq) {
 	os << "triple sequence" << std::endl;
 
-	for (TripleSequence::iterator it = seq.begin(); it != seq.end(); ++it) {
+	for (std::vector<Triple>::iterator it = seq.begin(); it != seq.end(); ++it) {
 		os << tripleOpToString(it->op);
-		if (it->result != SYMBOL_UNDEFINED) {
-			os << '\t' << it->result;
-		}
-
-		if (it->arg1 != SYMBOL_UNDEFINED) {
-		 os << '\t' <<  it->arg1;
-		}
-
-		if (it->arg2 != SYMBOL_UNDEFINED) {
-			os << '\t' << it->arg2;
-		}
+//
+//		if (it->arg1 != SYMBOL_UNDEFINED) {
+//		 os << '\t' <<  it->arg1;
+//		}
+//
+//		if (it->arg2 != SYMBOL_UNDEFINED) {
+//			os << '\t' << it->arg2;
+//		}
 
 		os << std::endl;
 	}

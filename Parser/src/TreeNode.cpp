@@ -62,6 +62,8 @@ namespace Compiler {
 
 			case NODE_NOT:					return "NODE_NOT";
 
+			case NODE_LABEL:				return "NODE_LABEL";
+
 			case NODE_UNDEFINED:			return "NODE_UNDEFINED";
 			default:
 				throw std::string("nodeTypeToString: not implemented yet");

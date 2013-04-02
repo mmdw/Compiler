@@ -26,7 +26,8 @@ class CodeGenerator {
 
 	TripleTranslator			tripleTranslator;
 
-	SymbolId castSymbolToType(TypeId targetType, SymbolId symbol, TripleSequence& tripleSequence, bool force = false);
+	TripleArg castSymbolToType(TypeId targetType, TripleArg tripleArg, TripleSequence& tripleSequence, bool force = false);
+	TypeId getTripleType(const TripleArg& ta, TripleSequence& tripleSequence);
 
 	void generateHeader();
 	void generateProcedures();
@@ -40,13 +41,14 @@ class CodeGenerator {
 	void generateTripleSequence(SymbolId targetFuncId, ASTBuilder::TreeNode* p_node, TripleSequence& tripleSequence);
 	void generateLocalVariables(TripleSequence& tripleSequence);
 
-	SymbolId maybeEval(SymbolId targetSymbolId, TreeNode* p_node, TripleSequence& tripleSequence);
-	TypeId maybeGetReferencedType(SymbolId id);
+	TripleArg maybeEval(SymbolId targetSymbolId, TreeNode* p_node, TripleSequence& tripleSequence);
+	TypeId maybeGetReferencedType(TripleArg ta, TripleSequence& ts);
 
 public:
-	std::string symbolToAddr(ASTBuilder::SymbolId symbolId) const;
+	std::string symbolToAddr(SymbolId symbolId) const;
+	std::string tripleArgToAddr(TripleArg ta) const;
 
-	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type);
+	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os);
 	virtual ~CodeGenerator();
 };
 

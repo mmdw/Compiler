@@ -1,12 +1,6 @@
-int foo(int x, int y) {
-	return x + y * y;
-}
-
-void main() {
-	pqueue<bool> q;
-	int y = 20;	
-	{
-		y = 40;
-		float y = 30;
+class Main {
+	void  main() {
+		float x = 1.5;
+		println(cast<int>(x));
 	}
 }

@@ -8,18 +8,30 @@
 	typedef Compiler::ASTBuilder::Parser::token Token;
 %}
 
+
 %option nodefault yyclass="Scanner" noyywrap c++
 
 IDENTIFIER		[[:alpha:]][[:alnum:]]*
 FLOAT			[[:digit:]]+"."[[:digit:]]+
 INT				[[:digit:]]+
 
+%s line_comment comment
 %%
  
 %{
 	yylloc->step();
 %}
 
+"//"				BEGIN(line_comment); 
+<line_comment>\n 	BEGIN(INITIAL); 
+<line_comment>.*	
+
+"/*"				BEGIN(comment);	
+<comment>"*/"       BEGIN(INITIAL);
+<comment>[^*\n]*        
+<comment>"*"+[^*/\n]*
+
+class			{  return Token::KEYWORD_CLASS; }
 pqueue			{  return Token::KEYWORD_PQUEUE; }
 cast			{  return Token::KEYWORD_CAST; }
 char			{  return Token::KEYWORD_CHAR; }
@@ -50,7 +62,7 @@ else			{ return Token::KEYWORD_ELSE; }
 ".push"			{ return Token::PQUEUE_PUSH; }
 ".pop"			{ return Token::PQUEUE_POP; }
 ".top"			{ return Token::PQUEUE_TOP; }
-".topPriority"	{ return Token::PQUEUE_TOP_PRIORITY; }
+".top_priority"	{ return Token::PQUEUE_TOP_PRIORITY; }
 ".size"			{ return Token::PQUEUE_SIZE; }
 ,				{ return Token::COMMA; }
 ==				{ return Token::EQUAL; }
@@ -63,8 +75,8 @@ else			{ return Token::KEYWORD_ELSE; }
 ">="			{ return Token::GREATER_EQUAL; }
 "="				{ return Token::ASSIGN; }
 
-true			{  yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::BOOL_VALUE; }
-false			{  yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::BOOL_VALUE; }
+true			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::BOOL_VALUE; }
+false			{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::BOOL_VALUE; }
 
 {IDENTIFIER} 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::IDENTIFIER; }
 {INT}		 	{ yylval->str = StringHolder::store(new std::string(yytext, yyleng)); return Token::INT_NUMBER; }
