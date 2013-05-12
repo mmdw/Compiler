@@ -1,6 +1,14 @@
 class Main {
+	void foo(pqueue<float> p) {
+		println(p.size());
+	}
+	
 	void  main() {
-		float x = 1.5;
-		println(cast<int>(x));
+		pqueue<float> a;
+		a.push(3.0, 30);
+		a.push(2.0, 20);
+		a.push(1.0, 10);
+		
+		foo(a);
 	}
 }

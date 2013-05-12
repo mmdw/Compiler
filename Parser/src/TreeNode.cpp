@@ -64,6 +64,9 @@ namespace Compiler {
 
 			case NODE_LABEL:				return "NODE_LABEL";
 
+			case NODE_INC:					return "NODE_INC";
+			case NODE_DEC:					return "NODE_DEC";
+
 			case NODE_UNDEFINED:			return "NODE_UNDEFINED";
 			default:
 				throw std::string("nodeTypeToString: not implemented yet");
@@ -123,7 +126,7 @@ namespace Compiler {
 
 		 		std::list<TreeNode*>::iterator it = childs.begin();
 
-		 		for (int i = 0; i < n; ++i) {
+		 		for (unsigned i = 0; i < n; ++i) {
 		 			++it;
 		 		}
 

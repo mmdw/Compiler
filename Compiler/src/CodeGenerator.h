@@ -23,6 +23,7 @@ class CodeGenerator {
 	ASTBuilder::TypeTable* 		p_type;
 
 	std::ostream& 				output;
+	std::ostream& 				tripleOutput;
 
 	TripleTranslator			tripleTranslator;
 
@@ -48,7 +49,8 @@ public:
 	std::string symbolToAddr(SymbolId symbolId) const;
 	std::string tripleArgToAddr(TripleArg ta) const;
 
-	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os);
+	CodeGenerator(ASTBuilder::TreeNode* p_root, ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type,
+			std::ostream& os, std::ostream& tos);
 	virtual ~CodeGenerator();
 };
 

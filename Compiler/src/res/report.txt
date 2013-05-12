@@ -1,0 +1,22 @@
+-= TypeTable =-
+0	LABEL			
+1	BASIC			bool
+2	BASIC			int
+3	BASIC			float
+4	BASIC			double
+5	BASIC			void
+6	FUNCTION		foo
+7	PQUEUE			
+8	FUNCTION		main
+
+-= SYMBOL TABLE =-
+0	FUNCTION	foo				UNDEFINED
+1	PQUEUE		p				FUNC_ARG
+2	FUNCTION	main			UNDEFINED
+3	PQUEUE		a				VARIABLE_LOCAL
+4	float		3.0				CONST_GLOBAL
+5	int			30				CONST_GLOBAL
+6	float		2.0				CONST_GLOBAL
+7	int			20				CONST_GLOBAL
+8	float		1.0				CONST_GLOBAL
+9	int			10				CONST_GLOBAL

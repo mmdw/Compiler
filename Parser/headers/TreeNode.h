@@ -78,6 +78,9 @@ namespace Compiler {
 
 			NODE_LABEL,
 
+			NODE_INC,
+			NODE_DEC,
+
 			NODE_UNDEFINED
 		};
 

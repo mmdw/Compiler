@@ -1,0 +1,14 @@
+class Main {
+	void  main() {
+		pqueue<float> q;
+		q.push(3.0, 30);
+		q.push(2.0, 20);
+		q.push(1.0, 10);
+		
+		while (q.size() > 0) {
+			print(q.top_priority()); 
+			println(q.top());
+			q.pop();
+		}
+	}
+}

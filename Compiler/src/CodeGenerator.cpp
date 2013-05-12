@@ -15,8 +15,8 @@
 namespace Compiler {
 
 CodeGenerator::CodeGenerator(ASTBuilder::TreeNode* p_root,
-		ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os)
-			: p_root(p_root), p_table(p_table), p_type(p_type), output(os),
+		ASTBuilder::SymbolTable* p_table, ASTBuilder::TypeTable* p_type, std::ostream& os, std::ostream& tos)
+			: p_root(p_root), p_table(p_table), p_type(p_type), output(os), tripleOutput(tos),
 			  tripleTranslator(*this) {
 
 	validate();
@@ -33,6 +33,11 @@ void CodeGenerator::generateHeader() {
 		"format PE console\n"
 		"entry start\n"
 		"include 'win32a.inc'\n"
+		"section '.data' readable writable\n"
+		"\targc dd ?\n"
+		"\targv dd ?\n"
+		"\tenv dd ?\n"
+
 		"section '.code' code readable executable\n\n"
 		"start: \n"
 		"\tcall __init\n"
@@ -55,6 +60,7 @@ void CodeGenerator::generateHeader() {
 
 void CodeGenerator::generateInitializationGlobalsCode() {
 	output << "proc __init\n";
+	tripleOutput << "initialization global varaibales: " << std::endl;
 	for (std::list<ASTBuilder::TreeNode*>::iterator it = p_root->childs.begin(); it != p_root->childs.end(); ++it) {
 		if ((*it)->nodeType != NODE_ASSIGN) {
 			continue;
@@ -65,6 +71,8 @@ void CodeGenerator::generateInitializationGlobalsCode() {
 		TripleSequence ts;
 		generateTripleSequence(SYMBOL_UNDEFINED, p_node, ts);
 		generateLocalVariables(ts);
+
+		printTripleSequence(tripleOutput, ts);
 		tripleTranslator.translate(p_table, p_type, output, ts);
 	}
 
@@ -76,10 +84,56 @@ void CodeGenerator::generateInitializationGlobalsCode() {
 			ts.append(Triple(TRIPLE_PQUEUE_INIT, TripleArg::sym(it->first), -1));
 		}
 	}
+
+
+	printTripleSequence(tripleOutput, ts);
 	tripleTranslator.translate(p_table, p_type, output, ts);
 
-	output << "\tcall main\n";
-	output << "ret\n";
+
+	std::list<SymbolId> args = p_type->get(p_type->getMainId()).getArguments();
+
+	if (args.size() > 0) {
+        output << "\tinvoke __getmainargs,argc,argv,env,0\n"
+        	   << "\tmov     esi, [argv]\n"
+        	   << "\tcmp     [argc], 3\n"
+        	   << "\tjne     error\n";
+
+        int i = 1;
+		for (std::list<SymbolId>::iterator it = args.begin(); it != args.end(); ++it) {
+	        output <<
+	        	"\tlocal   __arg_" << i << ":DWORD\n"
+	        	"\tlea eax, [__arg_" << i << "]\n"
+				"\tpush eax\n"
+				"\tpush __format_int\n"
+				"\tpush dword [esi + " << 4*i << "]\n"
+				"\tccall   [sscanf]\n";
+
+//			if (it != args.begin()) {
+//				output << ",";
+//			}
+//			output << p_table->find(*it).value;
+
+			++i;
+		}
+	}
+
+
+	int i = 1;
+	for (std::list<SymbolId>::iterator it = args.begin(); it != args.end(); ++it) {
+		output << "\tpush [__arg_" << args.size() - i + 1<< "]\n";
+		i++;
+	}
+
+	output << "\tcall main ";
+	output << "\n";
+
+	output << "\tret\n\n";
+
+	output << "\terror:\n"
+    "\tccall   [printf], __str_args_error\n"
+    "\tinvoke  getchar\n"
+    "\tinvoke ExitProcess, 1\n";
+
 	output << "endp\n\n";
 }
 
@@ -99,6 +153,7 @@ void CodeGenerator::generateConstSection() {
 	output << "__format_float\tdb\t\"%f\",0" << std::endl;
 	output << "__str_true\tdb\t\"true\",0" << std::endl;
 	output << "__str_false\tdb\t\"false\",0" << std::endl;
+	output << "__str_args_error db \"wrong args\",0" << std::endl;
 
 	output << std::endl;
 }
@@ -205,6 +260,9 @@ void CodeGenerator::generateProcedures() {
 			}
 		}
 		generateLocalVariables(tripleSequence);
+
+		tripleOutput << "\nfunction: " << symbol.value<< std::endl;
+		printTripleSequence(tripleOutput, tripleSequence);
 		tripleTranslator.translate(p_table, p_type, output, tripleSequence);
 
 		output << "endp" << std::endl << std::endl;
@@ -288,11 +346,22 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 			TripleArg rightAddr;
 
 			TypeId leftTypeId = p_table->find(leftAddr.getSymbolId()).typeId;
+
 			if (p_right->nodeType != NODE_SYMBOL) {
 				generateTripleSequence(targetFuncId, p_right, tripleSequence);
 
+				if (leftTypeId == p_type->BASIC_VAR) {
+					leftTypeId = getTripleType(tripleSequence.argBack(), tripleSequence);
+					p_table->find(leftAddr.getSymbolId()).typeId = leftTypeId;
+				}
+
 				rightAddr = castSymbolToType(leftTypeId, tripleSequence.argBack(), tripleSequence);
 			} else {
+				if (leftTypeId == p_type->BASIC_VAR) {
+					leftTypeId = p_table->find(p_node->at(1)->symbolId).typeId;
+					p_table->find(leftAddr.getSymbolId()).typeId = leftTypeId;
+				}
+
 				rightAddr = castSymbolToType(leftTypeId, TripleArg::sym(p_node->at(1)->symbolId), tripleSequence);
 			}
 
@@ -478,6 +547,9 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 			} else
 			if (lowlevelType == p_type->BASIC_BOOL) {
 				tripleSequence.append(Triple(TRIPLE_PUSH_BOOL, paramId, -1));
+			} else
+			if (p_type->get(lowlevelType).getKind() == TYPE_KIND_PQUEUE) {
+				tripleSequence.append(Triple(TRIPLE_PUSH_INT, paramId, -1)); /* fixme */
 			} else {
 				throw std::string("NODE_CALL: unknown type");
 			}
@@ -682,6 +754,46 @@ void CodeGenerator::generateTripleSequence(SymbolId targetFuncId, ASTBuilder::Tr
 		break;
 	}
 
+	case NODE_INC: {
+		if (p_node->at(0)->nodeType != NODE_SYMBOL) {
+			throw std::string("not l-value");
+		}
+
+		TripleArg ta = TripleArg::sym(p_node->at(0)->symbolId);
+		TypeId typeId = p_table->find(p_node->at(0)->symbolId).typeId;
+
+		if (typeId == p_type->BASIC_INT) {
+			tripleSequence.append(Triple(TRIPLE_POST_INC_INT, ta, typeId));
+		} else
+		if (typeId == p_type->BASIC_FLOAT) {
+			tripleSequence.append(Triple(TRIPLE_POST_INC_FLOAT, ta, typeId));
+		} else {
+			throw std::string("NODE_INC: unsupported type");
+		}
+
+		break;
+	}
+
+	case NODE_DEC: {
+		if (p_node->at(0)->nodeType != NODE_SYMBOL) {
+			throw std::string("not l-value");
+		}
+
+		TripleArg ta = TripleArg::sym(p_node->at(0)->symbolId);
+		TypeId typeId = p_table->find(p_node->at(0)->symbolId).typeId;
+
+		if (typeId == p_type->BASIC_INT) {
+			tripleSequence.append(Triple(TRIPLE_POST_DEC_INT, ta, typeId));
+		} else
+		if (typeId == p_type->BASIC_FLOAT) {
+			tripleSequence.append(Triple(TRIPLE_POST_DEC_FLOAT, ta, typeId));
+		} else {
+			throw std::string("NODE_DEC: unsupported type");
+		}
+
+		break;
+	}
+
 	default:
 		throw ASTBuilder::nodeTypeToString(p_node->nodeType);
 	}
@@ -760,7 +872,7 @@ void CodeGenerator::generateFooter() {
 		"section '.idata' import data readable\n"
 		"library kernel,'kernel32.dll',msvcrt,'msvcrt.dll', pqueue, 'libpqueue.dll'\n"
 		"import kernel, ExitProcess,'ExitProcess' \n"
-		"import msvcrt, printf,'printf', getchar, '_fgetchar', scanf, 'scanf'\n"
+		"import msvcrt, printf,'printf', getchar, '_fgetchar', sscanf, 'sscanf', scanf, 'scanf', __getmainargs,'__getmainargs'\n"
 		"import pqueue, \\\n"
 			"\tpqueue_alloc, 'pqueue_alloc', \\\n"
 			"\tpqueue_size, 'pqueue_size', \\\n"

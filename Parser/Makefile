@@ -1,5 +1,5 @@
 CC     = g++
-CFLAGS = -Wall -g -IC:\Program\ Files\ (x86)\FlexBison
+CFLAGS = -Wall -g -IC:\Program\ Files\ (x86)\FlexBison -fexceptions
 BIN    = Parser.exe
 LIB	   = libParser.a
 

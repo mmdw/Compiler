@@ -55,9 +55,11 @@ namespace ASTBuilder {
 	private:
 		std::map<TypeId, TypeRow> rows;
 		unsigned typeCount;
+		int mainId;
 
 	public:
 		const TypeId LABEL;
+		const TypeId BASIC_VAR;
 		const TypeId BASIC_BOOL;
 		const TypeId BASIC_INT;
 		const TypeId BASIC_FLOAT;
@@ -73,7 +75,9 @@ namespace ASTBuilder {
 		TypeId insertFunction(TypeId returnType, const std::string& identifier);
 		TypeId getReferencedType(TypeId typeId);
 
-		void debug();
+		TypeId getMainId();
+
+		void debug(std::ostream& os);
 
 	private:
 		TypeId addBasic(const std::string& name);

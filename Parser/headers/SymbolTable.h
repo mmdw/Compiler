@@ -46,7 +46,7 @@ public:
 	SymbolMap::const_iterator 	begin();
 	SymbolMap::const_iterator	end();
 
-	const Symbol& 				find(SymbolId symbolId);
+	Symbol& 				find(SymbolId symbolId);
 
 
 	void debug(std::ostream& os, TypeTable* p_type);

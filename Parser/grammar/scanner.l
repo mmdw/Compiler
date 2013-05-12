@@ -47,7 +47,11 @@ typedef			{ return Token::KEYWORD_TYPEDEF; }
 return 			{ return Token::KEYWORD_RETURN; }
 if				{ return Token::KEYWORD_IF; }
 else			{ return Token::KEYWORD_ELSE; }
+namespace		{ return Token::KEYWORD_NAMESPACE; }
+var				{ return Token::KEYWORD_VAR; }
 
+"++"			{ return Token::INC; }
+"--"			{ return Token::DEC; }
 "+"			 	{ return Token::ADD; }
 "-"			 	{ return Token::SUB; }
 "*"			 	{ return Token::MUL; }

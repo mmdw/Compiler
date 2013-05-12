@@ -1,0 +1,34 @@
+class Main {
+	void  main() {
+		pqueue<pqueue<float>> q;
+	
+		pqueue<float> a;
+		a.push(3.0, 30);
+		a.push(2.0, 20);
+		a.push(1.0, 10);
+		
+		pqueue<float> b;
+		b.push(6.0, 60);
+		b.push(5.0, 0);
+		b.push(4.0, 40);
+		
+		pqueue<float> c;
+		c.push(9.0, 90);
+		c.push(8.0, 80);
+		c.push(7.0, 70);
+		
+		q.push(a, 100);
+		q.push(b, 200);
+		q.push(c, 300);
+		
+		while (q.size() > 0) {
+			while(q.top().size() > 0) {
+				print(q.top().top_priority());
+				println(q.top().top());
+				
+				q.top().pop();
+			}
+			q.pop();
+		}
+	}
+}

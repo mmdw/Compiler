@@ -9,6 +9,8 @@
 #include "TripleTranslator.h"
 #include "CodeGenerator.h"
 
+#include <iostream>
+
 namespace Compiler {
 
 static const std::string ST0		= "st0";
@@ -40,6 +42,10 @@ LabelId TripleTranslator::newLabel() {
 
 static std::string inst(const std::string& name, const std::string& arg1, const std::string& arg2) {
 	return name + "\t" + arg1 +",\t" + arg2;
+}
+
+static std::string inst(const std::string& name, const std::string& arg1) {
+	return name + "\t" + arg1;
 }
 
 static std::string mov(const std::string& arg1, const std::string& arg2) {
@@ -86,6 +92,10 @@ static std::string fstp(const std::string& arg) {
 	return "fstp\tdword\t" + arg;
 }
 
+static std::string fst(const std::string& arg) {
+	return "fst\tdword\t" + arg;
+}
+
 static std::string fistp(const std::string& arg) {
 	return "fistp\tdword\t" + arg;
 }
@@ -100,6 +110,10 @@ static std::string fstp_qword(const std::string& arg) {
 
 static std::string fld(const std::string& arg) {
 	return "fld\tdword\t" + arg;
+}
+
+static std::string fld1() {
+	return "fld1";
 }
 
 static std::string fadd(const std::string& arg) {
@@ -154,8 +168,12 @@ static std::string cmp(const std::string& arg1, const std::string& arg2) {
 	return "cmp\t " + arg1 + ", " + arg2;
 }
 
-static std::string fcomip(const std::string& arg1) {
-	return "fcomip\t" + arg1;
+static std::string inc(const std::string& arg1) {
+	return "inc\t" + arg1;
+}
+
+static std::string dec(const std::string& arg1) {
+	return "dec\t" + arg1;
 }
 
 static std::string jz(const std::string& arg1) {
@@ -399,6 +417,36 @@ void TripleTranslator::translate(ASTBuilder::SymbolTable* p_table, TypeTable* p_
 			append(os, push(b(cg.tripleArgToAddr(triple.arg1))));
 			append(os, "ccall [pqueue_top_priority]");
 			append(os, mov(b(tripleRes), EAX));
+			break;
+		case TRIPLE_POST_INC_INT:
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, mov(b(tripleRes), EAX));
+
+			append(os, inc(EAX));
+			append(os, mov(b(cg.tripleArgToAddr(triple.arg1)), EAX));
+			break;
+		case TRIPLE_POST_DEC_INT:
+			append(os, mov(EAX, b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, mov(b(tripleRes), EAX));
+
+			append(os, dec(EAX));
+			append(os, mov(b(cg.tripleArgToAddr(triple.arg1)), EAX));
+			break;
+		case TRIPLE_POST_INC_FLOAT:
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fst(b(tripleRes)));
+
+			append(os, fld1());
+			append(os, inst("faddp", "st1", "st0"));
+			append(os, fstp(b(cg.tripleArgToAddr(triple.arg1))));
+			break;
+		case TRIPLE_POST_DEC_FLOAT:
+			append(os, fld(b(cg.tripleArgToAddr(triple.arg1))));
+			append(os, fst(b(tripleRes)));
+
+			append(os, fld1());
+			append(os, inst("fsubp", "st1", "st0"));
+			append(os, fstp(b(cg.tripleArgToAddr(triple.arg1))));
 			break;
 		default:
 			throw std::string("translate failed: ") + tripleOpToString(triple.op);

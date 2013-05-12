@@ -6,6 +6,7 @@
  */
 
 #include "Triple.h"
+#include <iostream>
 
 namespace Compiler {
 
@@ -29,6 +30,8 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_CALL_FUNCTION:			return "CALL_FUNCTION";
 			case TRIPLE_CALL_PROCEDURE: 		return "CALL_PROCEDURE";
 			case TRIPLE_INT_TO_FLOAT:			return "INT_TO_FLOAT";
+			case TRIPLE_INT_TO_DOUBLE_FLOAT:	return "INT_TO_DOUBLE_FLOAT";
+			case TRIPLE_FLOAT_TO_DOUBLE_FLOAT:	return "FLOAT_TO_DOUBLE_FLOAT";
 			case TRIPLE_PRINTLN_DOUBLE_FLOAT:	return "PRINTLN_DOUBLE_FLOAT";
 			case TRIPLE_PRINTLN_INT:			return "PRINTLN_INT";
 			case TRIPLE_PRINTLN_BOOL:			return "PRINTLN_BOOL";
@@ -51,35 +54,44 @@ std::string tripleOpToString(TripleOp op) {
 			case TRIPLE_LESS_EQUAL_FLOAT:		return "LESS_EQUAL_FLOAT";
 			case TRIPLE_GREATER_FLOAT:			return "GREATER_FLOAT";
 			case TRIPLE_GREATER_EQUAL_FLOAT:	return "GREATER_EQUAL_FLOAT";
+			case TRIPLE_EQUAL_INT:				return "EQUAL_INT";
 			case TRIPLE_JZ:						return "JZ";
 			case TRIPLE_JMP:					return "JMP";
+			case TRIPLE_POST_INC_INT:			return "POST_INC_INT";
+			case TRIPLE_POST_INC_FLOAT:			return "POST_INC_FLOAT";
+			case TRIPLE_POST_DEC_INT:			return "POST_DEC_INT";
+			case TRIPLE_POST_DEC_FLOAT:			return "POST_DEC_FLOAT";
 			case TRIPLE_LABEL:					return "LABEL";
-			case TRIPLE_PQUEUE_INIT:			return "TRIPLE_PQUEUE_INIT";
-			case TRIPLE_PQUEUE_PUSH:			return "TRIPLE_PQUEUE_PUSH";
-			case TRIPLE_PQUEUE_POP:				return "TRIPLE_PQUEUE_POP";
-			case TRIPLE_PQUEUE_SIZE:			return "TRIPLE_PQUEUE_SIZE";
-			case TRIPLE_PQUEUE_TOP:				return "TRIPLE_PQUEUE_TOP";
-			case TRIPLE_PQUEUE_TOP_PRIORITY:	return "TRIPLE_PQUEUE_TOP_PRIORITY";
-			case TRIPLE_FLOAT_TO_INT:			return "TRIPLE_FLOAT_TO_INT";
+			case TRIPLE_PQUEUE_INIT:			return "PQUEUE_INIT";
+			case TRIPLE_PQUEUE_PUSH:			return "PQUEUE_PUSH";
+			case TRIPLE_PQUEUE_POP:				return "PQUEUE_POP";
+			case TRIPLE_PQUEUE_SIZE:			return "PQUEUE_SIZE";
+			case TRIPLE_PQUEUE_TOP:				return "PQUEUE_TOP";
+			case TRIPLE_PQUEUE_TOP_PRIORITY:	return "PQUEUE_TOP_PRIORITY";
+			case TRIPLE_FLOAT_TO_INT:			return "FLOAT_TO_INT";
 
 			default:
+				std::cerr << "TS: " << op;
 				throw std::string("tripleOpToString: not implemented yet");
 			}
 		}
 
-void printTripleSequence(std::ostream& os, TripleSequence& seq) {
-	os << "triple sequence" << std::endl;
+static void printTripleArg(std::ostream& os, const TripleArg& ta) {
+	if (!ta.isNull()) {
+		if (ta.isSymbol()) {
+			os << " <symbolId: " << ta.getSymbolId() << ">";
+		} else {
+			os << " <" << ta.getPos() << ">";
+		}
+	}
+}
 
+void printTripleSequence(std::ostream& os, TripleSequence& seq) {
+	size_t n = 0;
 	for (std::vector<Triple>::iterator it = seq.begin(); it != seq.end(); ++it) {
-		os << tripleOpToString(it->op);
-//
-//		if (it->arg1 != SYMBOL_UNDEFINED) {
-//		 os << '\t' <<  it->arg1;
-//		}
-//
-//		if (it->arg2 != SYMBOL_UNDEFINED) {
-//			os << '\t' << it->arg2;
-//		}
+		os << n++ << " " << tripleOpToString(it->op) << std::flush;
+		printTripleArg(os, it->arg1);
+		printTripleArg(os, it->arg2);
 
 		os << std::endl;
 	}

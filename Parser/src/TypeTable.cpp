@@ -1,4 +1,4 @@
-#include <iostream>
+#include <ostream>
 
 #include "../headers/TypeTable.h"
 
@@ -90,7 +90,9 @@ void Compiler::ASTBuilder::TypeRow::setItemType(TypeId ref) {
 TypeTable::TypeTable()  :
 	rows(std::map<TypeId, TypeRow>()),
 	typeCount(0),
+	mainId(-1),
 	LABEL(addLabel()),
+	BASIC_VAR(addBasic("var")),
 	BASIC_BOOL(addBasic("bool")),
 	BASIC_INT(addBasic("int")),
 	BASIC_FLOAT(addBasic("float")),
@@ -131,15 +133,31 @@ TypeId TypeTable::insertFunction(TypeId returnType,	const std::string& identifie
 	row.setReturnType(returnType);
 
 	rows.insert(std::pair<TypeId, TypeRow>(id, row));
+
+	if (identifier == "main") {
+		mainId = id;
+	}
+
 	return id;
 }
 
-void TypeTable::debug() {
-	std::cout << "-= TypeTable =-\n";
+static std::string& align(std::string& str, int tabsc) {
+	int len = tabsc - str.length() / 4;
+	str += '\t';
+	for (int i = 0; i < len; ++i) {
+		str += '\t';
+	}
+
+	return str;
+}
+
+void TypeTable::debug(std::ostream& os) {
+	os << "-= TypeTable =-\n";
 	for (std::map<TypeId, TypeRow>::const_iterator it = rows.begin(); it != rows.end(); ++it) {
-		std::cout
+		std::string kind = typeKindToString(it->second.getKind());
+		os
 			<< it->first << '\t'
-			<< typeKindToString(it->second.getKind()) << '\t'
+			<< align(kind, 2) << '\t'
 			<< (it->second.getKind() != TYPE_KIND_LABEL && it->second.getKind() != TYPE_KIND_PQUEUE ? it->second.getName() : "") << std::endl;
 	}
 }
@@ -208,5 +226,14 @@ TypeId TypeTable::pqueueType(TypeId refType) {
 	return id;
 }
 
+TypeId Compiler::ASTBuilder::TypeTable::getMainId() {
+	if (mainId > 0) {
+		return mainId;
+	} else {
+		throw std::string("main() not found");
+	}
+}
+
 }
 }
+

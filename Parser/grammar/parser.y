@@ -63,30 +63,33 @@
 %type <val> exp exp_0 exp_1 exp_2 exp_3 exp_4 exp_5 exp_6 exp_7 
 %type <val> while_statement identifier if_statement
 
-%token <tptr> ADD  NOT SUB CB MUL DIV DOT OP CP EOL OR OB  SEMICOLON AND COMMA
+%token <tptr> ADD  NOT SUB CB MUL DIV DOT OP CP EOL OR OB  INC DEC SEMICOLON AND COMMA
 %token <tptr> EQUAL				NOT_EQUAL		LESS 			LESS_EQUAL 		GREATER 		GREATER_EQUAL 	ASSIGN 
 %token <tptr> KEYWORD_VOID 		KEYWORD_IF 		KEYWORD_ELSE 	KEYWORD_WHILE 	KEYWORD_PRINTLN KEYWORD_PRINT
-%token <tptr> KEYWORD_PQUEUE 	KEYWORD_CAST 	KEYWORD_READLN 	KEYWORD_RETURN	KEYWORD_CLASS
+%token <tptr> KEYWORD_PQUEUE 	KEYWORD_CAST 	KEYWORD_READLN 	KEYWORD_RETURN	KEYWORD_CLASS	KEYWORD_NAMESPACE
 %token <tptr> KEYWORD_TYPEDEF 	PQUEUE_PUSH 	PQUEUE_POP 		PQUEUE_SIZE 	PQUEUE_TOP 		PQUEUE_TOP_PRIORITY
+%token <tptr> KEYWORD_VAR
+
 
 %type <typeId> typename
 %token <str> IDENTIFIER 		INT_NUMBER  	FLOAT_NUMBER  	KEYWORD_CHAR 	KEYWORD_INT 	KEYWORD_FLOAT 	KEYWORD_BOOL 	BOOL_VALUE
 
 %%
 
-program : KEYWORD_CLASS IDENTIFIER OB definition_seq CB		{ *pp_root = $4; }
+program : KEYWORD_NAMESPACE IDENTIFIER OB KEYWORD_CLASS IDENTIFIER OB definition_seq CB CB	{ *pp_root = $7; }
  ;
 
 definition_seq : 											{ $$ = new TreeNode(NODE_DEFINITION_SEQUENCE); }
  | definition_seq func_def									{ $$ = $1->append($2); }
  | definition_seq global_variable_definition				
  | definition_seq global_variable_definition_with_init		{ $$ = $1->append($2); }
- | definition_seq type_def		
+ | definition_seq type_def
+ | KEYWORD_NAMESPACE IDENTIFIER OB definition_seq CB		
  ;
 
 global_variable_definition : typename IDENTIFIER SEMICOLON	{ p_resolver->insertVariable($1, *$2, ALLOCATION_VARIABLE_GLOBAL);  }
  ;
- 
+
 global_variable_definition_with_init : typename IDENTIFIER ASSIGN exp SEMICOLON
 	{ TreeNode* p_identifier = new TreeNode(NODE_SYMBOL);
 	  p_identifier->symbolId = p_resolver->insertVariable($1, *$2, ALLOCATION_VARIABLE_GLOBAL); 
@@ -109,6 +112,7 @@ type_def: KEYWORD_TYPEDEF typename IDENTIFIER SEMICOLON
 typename : KEYWORD_INT								{ $$ = p_resolver->type()->BASIC_INT; }		
  | KEYWORD_BOOL										{ $$ = p_resolver->type()->BASIC_BOOL; }
  | KEYWORD_FLOAT									{ $$ = p_resolver->type()->BASIC_FLOAT; }
+ | KEYWORD_VAR										{ $$ = p_resolver->type()->BASIC_VAR; }
  | IDENTIFIER										{ $$ = p_resolver->type()->findDefinedType(*$1); }
  | KEYWORD_VOID										{ $$ = p_resolver->type()->BASIC_VOID; }
  | KEYWORD_PQUEUE LESS typename GREATER				{ $$ = p_resolver->type()->pqueueType($3); }
@@ -215,6 +219,8 @@ exp_5: exp_6
  ;
 
 exp_6: exp_7
+ | exp_7 INC						{ $$ = (new TreeNode(NODE_INC))->append($1); 		  	}
+ | exp_7 DEC 						{ $$ = (new TreeNode(NODE_DEC))->append($1); 		  	}
  | SUB exp_6						{ $$ = (new TreeNode(NODE_UMINUS))->append($2); 		  	}
  | NOT exp_6						{ $$ = (new TreeNode(NODE_NOT))->append($2); 		 	  	}
  | KEYWORD_CAST	LESS typename GREATER OP exp CP	

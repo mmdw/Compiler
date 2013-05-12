@@ -8,6 +8,8 @@
 #include <cassert>
 #include <sstream>
 
+#include <iostream>
+
 #include "../headers/SymbolTable.h"
 
 namespace Compiler {
@@ -50,7 +52,6 @@ SymbolId SymbolTable::insert(const std::string& value, TypeId typeId, Allocation
 //			row.value = value;
 //		}
 
-
 		if (allocationType == ALLOCATION_CONST_GLOBAL) {
 			for(SymbolMap::iterator it = table.begin(); it != table.end(); ++it) {
 				if (row.value == it->second.value) {
@@ -71,15 +72,30 @@ SymbolId SymbolTable::insert(const std::string& value, TypeId typeId, Allocation
 		return id;
 }
 
+static std::string& align(std::string& str, int tabsc) {
+	int len = tabsc - str.length() / 4;
+	str += '\t';
+	for (int i = 0; i < len; ++i) {
+		str += '\t';
+	}
+
+	return str;
+}
+
 void SymbolTable::debug(std::ostream& os, TypeTable* p_type) {
 	os << "-= SYMBOL TABLE =-" << std::endl;
 	for(SymbolMap::iterator it = table.begin(); it != table.end(); ++it) {
 		TypeId typeId = it->second.typeId;
 		Compiler::ASTBuilder::TypeRow typeRow = p_type->get(typeId);
 
+		std::string name = (typeRow.getKind() != TYPE_KIND_PQUEUE &&
+				            typeRow.getKind() != TYPE_KIND_FUNCTION &&
+				            typeRow.getKind() != TYPE_KIND_LABEL ? typeRow.getName()
+				   : typeKindToString(typeRow.getKind()));
+
 		os << it->first << '\t'
-		   << (typeRow.getKind() != TYPE_KIND_PQUEUE ? typeRow.getName() : "PQUEUE") << '\t'
-		   << it->second.value << '\t'
+		   << align(name, 2)
+		   << align(it->second.value, 2) << '\t'
 		   << allocationTypeToString(it->second.allocationType) << std::endl;
 	}
 }
@@ -92,7 +108,7 @@ std::map<SymbolId, Symbol>::const_iterator SymbolTable::end() {
 	return table.end();
 }
 
-const Symbol& SymbolTable::find(SymbolId symbolId) {
+Symbol& SymbolTable::find(SymbolId symbolId) {
 	if (table.find(symbolId) == table.end()) {
 		throw std::string("symbol not found");
 	}
